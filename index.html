@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference Validator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <header>
+      <h1>Reference Validator</h1>
+      <p class="subtitle">Paste a full reference list to check for potentially fabricated citations</p>
+    </header>
+
+    <main>
+      <section class="input-panel">
+        <textarea
+          id="inputText"
+          placeholder="Paste your bibliography or reference list here..."
+          aria-label="Reference input"
+        ></textarea>
+
+        <div class="controls">
+          <button id="analyzeBtn" class="primary">Analyze References</button>
+          <button id="clearBtn" class="secondary">Clear</button>
+        </div>
+      </section>
+
+      <section class="options-panel">
+        <label class="option">
+          <input type="checkbox" id="useBooks" checked>
+          Search Google Books for book-like citations (fallback)
+        </label>
+        <label class="option">
+          <input type="checkbox" id="strictMode">
+          Strict matching (require exact title match)
+        </label>
+      </section>
+
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <section id="results" class="results-container"></section>
+    </main>
+
+    <footer>
+      <p>All checks are probabilistic. Results should be interpreted with care.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
