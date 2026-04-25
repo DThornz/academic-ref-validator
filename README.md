@@ -4,7 +4,7 @@ A client-side tool that flags potentially fake citations. Paste a reference list
 
 ## Live demo
 
-Once GitHub Pages is enabled for this repository, the app will be available at:
+The web app is available at:
 
 `https://dthornz.github.io/reference-validator/`
 
