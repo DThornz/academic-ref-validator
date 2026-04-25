@@ -1,5 +1,5 @@
-import { splitReferences, extractFeatures, buildQuery } from './parser.js';
-import { verifyDOI, searchPubMed, searchOpenAlex, searchBooks } from './verifier.js';
+import { splitReferences, extractFeatures, buildQuery, buildCoreQuery } from './parser.js';
+import { verifyDOI, searchSemanticScholar, searchPubMed, searchOpenAlex, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const query = buildQuery(ref);
 
           let doiVerified = false;
+          let semanticScholarMatch = null;
           let pubmedMatch = null;
           let openAlexMatch = null;
           let bookMatch = null;
@@ -52,30 +53,45 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (!doiVerified) {
-            const hit = await searchPubMed(query);
-            if (hit && isRelevantMatch(ref, hit.title)) pubmedMatch = hit;
+            const coreQuery = buildCoreQuery(ref, features);
+
+            // Semantic Scholar and PubMed run in parallel — both use the cleaned query.
+            const [ssResults, pubmedHit] = await Promise.all([
+              searchSemanticScholar(coreQuery),
+              searchPubMed(coreQuery)
+            ]);
+
+            // Semantic Scholar: pick first of up to 3 candidates that shares a word.
+            const ssHit = ssResults.find(r => isBasicMatch(ref, r.title));
+            if (ssHit) semanticScholarMatch = ssHit;
+
+            if (pubmedHit && isBasicMatch(ref, pubmedHit.title)) pubmedMatch = pubmedHit;
+
+            // OpenAlex as fallback — stricter relevance check because it tends to
+            // return topically related but wrong papers.
+            if (!semanticScholarMatch && !pubmedMatch) {
+              const hit = await searchOpenAlex(query);
+              const title = hit?.title || hit?.display_name;
+              if (hit && isRelevantMatch(ref, title)) openAlexMatch = hit;
+            }
+
+            // Google Books as last resort for book-like citations.
+            if (!semanticScholarMatch && !pubmedMatch && !openAlexMatch && useBooks.checked) {
+              const hit = await searchBooks(query);
+              const title = hit?.volumeInfo?.title;
+              if (hit && isRelevantMatch(ref, title)) bookMatch = hit;
+            }
           }
 
-          if (!doiVerified && !pubmedMatch) {
-            const hit = await searchOpenAlex(query);
-            const title = hit?.title || hit?.display_name;
-            if (hit && isRelevantMatch(ref, title)) openAlexMatch = hit;
-          }
-
-          if (!doiVerified && !pubmedMatch && !openAlexMatch && useBooks.checked) {
-            const hit = await searchBooks(query);
-            const title = hit?.volumeInfo?.title;
-            if (hit && isRelevantMatch(ref, title)) bookMatch = hit;
-          }
-
-          const titleConfirmed = checkTitleMatch(features, openAlexMatch, bookMatch);
+          const titleConfirmed = checkTitleMatch(features, semanticScholarMatch, openAlexMatch, bookMatch);
 
           const scored = scoreReference(features, {
             doiVerified,
+            semanticScholarMatch,
             pubmedMatch,
             openAlexMatch,
             bookMatch,
-            anyMatch: Boolean(doiVerified || pubmedMatch || openAlexMatch || bookMatch),
+            anyMatch: Boolean(doiVerified || semanticScholarMatch || pubmedMatch || openAlexMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
@@ -101,8 +117,27 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Require at least 2 meaningful words shared between the reference text and a
- * result title before counting the result as a real match.
+ * Light relevance check for trusted APIs (Semantic Scholar, PubMed).
+ * Requires at least one meaningful word shared between the reference and the result title.
+ */
+function isBasicMatch(refText, resultTitle) {
+  if (!resultTitle) return false;
+  const STOPWORDS = new Set([
+    'about', 'after', 'also', 'based', 'been', 'from', 'have', 'into',
+    'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
+    'through', 'using', 'which', 'with'
+  ]);
+  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 4 && !STOPWORDS.has(w));
+  const refSet = new Set(words(refText));
+  return words(resultTitle).some(w => refSet.has(w));
+}
+
+/**
+ * Stricter relevance check for OpenAlex / Google Books, which tend to return
+ * topically related but wrong papers. Requires ≥2 shared words AND ≥25% of
+ * the result title covered — the percentage check prevents domain-general
+ * papers that share only field-level keywords from passing.
  */
 function isRelevantMatch(refText, resultTitle) {
   if (!resultTitle) return false;
@@ -117,19 +152,17 @@ function isRelevantMatch(refText, resultTitle) {
   const titleWords = words(resultTitle);
   if (titleWords.length === 0) return false;
   const shared = titleWords.filter(w => refSet.has(w));
-  // Need at least 2 shared words AND ≥25% of the result title covered.
-  // The percentage check stops domain-general papers (which share field keywords
-  // with everything) from counting as a match in narrow subject areas.
   return shared.length >= 2 && shared.length / titleWords.length >= 0.25;
 }
 
 /**
  * Loose substring match between extracted title (if any) and a result's title.
  */
-function checkTitleMatch(features, openAlexMatch, bookMatch) {
+function checkTitleMatch(features, semanticScholarMatch, openAlexMatch, bookMatch) {
   if (!features.title) return false;
   const target = features.title.toLowerCase();
   const candidates = [
+    semanticScholarMatch?.title,
     openAlexMatch?.title,
     openAlexMatch?.display_name,
     bookMatch?.volumeInfo?.title

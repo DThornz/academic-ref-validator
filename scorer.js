@@ -15,6 +15,15 @@ export function scoreReference(features, results, options = {}) {
     reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef` });
   }
 
+  if (results.semanticScholarMatch) {
+    score += SCORE.SEMANTIC_SCHOLAR_MATCH;
+    const title = results.semanticScholarMatch.title;
+    reasons.push({
+      kind: 'positive',
+      text: title ? `Found in Semantic Scholar: "${truncate(title, 120)}"` : 'Found in Semantic Scholar'
+    });
+  }
+
   if (results.pubmedMatch) {
     score += SCORE.PUBMED_MATCH;
     const title = results.pubmedMatch.title;
@@ -44,7 +53,7 @@ export function scoreReference(features, results, options = {}) {
 
   if (!results.anyMatch) {
     score += SCORE.NO_MATCH_PENALTY;
-    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, PubMed, OpenAlex, or Google Books' });
+    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Semantic Scholar, PubMed, OpenAlex, or Google Books' });
   }
 
   if (features.year) {

@@ -31,6 +31,21 @@ export async function searchOpenAlex(query) {
 }
 
 /**
+ * Search Semantic Scholar. Returns up to 3 candidate results (array), or [].
+ */
+export async function searchSemanticScholar(query) {
+  try {
+    const url = `${API.SEMANTIC_SCHOLAR}?query=${encodeURIComponent(query)}&limit=3&fields=title,year,externalIds`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Search PubMed via NCBI E-utilities. Returns the summary record or null.
  */
 export async function searchPubMed(query) {

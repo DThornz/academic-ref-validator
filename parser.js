@@ -50,3 +50,24 @@ export function buildQuery(ref) {
   if (q.length > 250) q = q.slice(0, 250);
   return q;
 }
+
+/**
+ * Build a clean query optimised for text-search APIs (Semantic Scholar, PubMed).
+ * Removes "et al.", page ranges, year-in-parens, and small standalone numbers so
+ * the API sees mostly title words and author surnames rather than citation metadata.
+ */
+export function buildCoreQuery(ref, features) {
+  let q = ref
+    .replace(/\n/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\bdoi:\s*\S+/gi, ' ')
+    .replace(/\bet\s+al\.?/gi, ' ')
+    .replace(/\b\d+[–\-]\d+\b/g, ' ')  // page ranges: 1-7, 329-349
+    .replace(/\(\d{4}\)\.?/g, ' ')      // (2016).
+    .replace(/\b\d{1,3}\b/g, ' ')       // small standalone numbers (vol, issue)
+    .replace(/[,;&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (features?.year) q += ` ${features.year}`;
+  return q.slice(0, 220);
+}
