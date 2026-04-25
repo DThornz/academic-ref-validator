@@ -1,0 +1,181 @@
+REFERENCE VALIDATOR LICENSE
+Copyright (c) 2026 Asad Mirza
+
+All rights reserved.
+
+───────────────────────────────────────────────────────────
+1. DEFINITIONS
+───────────────────────────────────────────────────────────
+
+"Software" means the Reference Validator application, including
+all source code, documentation, configuration files, and
+associated materials found in this repository.
+
+"You" means an individual or legal entity exercising permissions
+granted by this License.
+
+"Commercial Use" means any use of the Software primarily intended
+for or directed toward commercial advantage or monetary
+compensation, including but not limited to:
+
+  a) Selling, licensing, or distributing the Software for a fee.
+
+  b) Incorporating the Software into a product or service that is
+     sold, licensed, or otherwise monetized.
+
+  c) Using the Software to provide a paid service, subscription
+     platform, or consultancy where the Software is a core
+     component of the offering.
+
+  d) Hosting the Software as a service (SaaS) and charging users
+     for access to that service.
+
+  e) Using the Software within a for-profit organization for
+     internal business operations that generate revenue, unless
+     such use is strictly for non-commercial academic research
+     conducted by that organization.
+
+"Academic Use" means use by students, faculty, researchers, or
+staff at accredited educational institutions for teaching,
+learning, or non-commercial scholarly research.
+
+"Research Use" means use for scientific, scholarly, or
+investigative purposes that are not funded by, performed for,
+or resulting in direct financial benefit to a commercial entity.
+
+"Personal Use" means use by an individual for private, non-
+commercial, non-institutional purposes.
+
+───────────────────────────────────────────────────────────
+2. GRANT OF RIGHTS
+───────────────────────────────────────────────────────────
+
+Subject to the terms of this License, You are granted a
+worldwide, royalty-free, non-exclusive, non-transferable,
+non-sublicensable license to:
+
+  a) Use the Software for Academic Use, Research Use, and
+     Personal Use.
+
+  b) Modify the Software and create derivative works, provided
+     that such modifications and derivative works remain subject
+     to this License in its entirety.
+
+  c) Distribute verbatim copies of the Software, provided that
+     You retain all copyright notices, this License, and the
+     disclaimer of warranties.
+
+  d) Distribute modified versions of the Software, provided that
+     You:
+
+       i) Clearly mark the modified versions as modified.
+      ii) Retain all copyright notices.
+     iii) Include this License with the distribution.
+      iv) Make the source code of the modified version freely
+          available under this same License.
+
+───────────────────────────────────────────────────────────
+3. PROHIBITED USES
+───────────────────────────────────────────────────────────
+
+You may NOT, under any circumstances:
+
+  a) Use the Software for any Commercial Use as defined in
+     Section 1 without first obtaining a separate commercial
+     license from the copyright holder. To request a commercial
+     license, contact [your email address].
+
+  b) Remove, obscure, or alter any copyright notices, license
+     text, or attribution included with the Software.
+
+  c) Use the Software in any manner that violates applicable
+     laws or regulations.
+
+  d) Use the Software to create or validate fraudulent academic
+     citations, misleading research outputs, or deceptive
+     scholarly content.
+
+  e) Patent any algorithm, method, or process contained within
+     the Software. The Software is prior art.
+
+───────────────────────────────────────────────────────────
+4. ATTRIBUTION
+───────────────────────────────────────────────────────────
+
+All copies and distributions of the Software, whether verbatim
+or modified, must retain the following attribution in a
+prominent location:
+
+  "This software includes the Reference Validator originally
+   developed by [Your Name] (https://github.com/[your-repo])."
+
+───────────────────────────────────────────────────────────
+5. INTELLECTUAL PROPERTY
+───────────────────────────────────────────────────────────
+
+The copyright holder retains all rights, title, and interest in
+and to the Software, including all intellectual property rights.
+This License does not transfer ownership of any intellectual
+property. All rights not expressly granted herein are reserved.
+
+───────────────────────────────────────────────────────────
+6. DISCLAIMER OF WARRANTY
+───────────────────────────────────────────────────────────
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF,
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+THE COPYRIGHT HOLDER MAKES NO REPRESENTATION THAT THE SOFTWARE
+WILL ACCURATELY IDENTIFY ALL FABRICATED CITATIONS. USERS SHOULD
+ALWAYS EXERCISE INDEPENDENT JUDGMENT. THE SOFTWARE IS A
+PROBABILISTIC AID, NOT AN AUTHORITATIVE TRUTH ORACLE.
+
+───────────────────────────────────────────────────────────
+7. LIMITATION OF LIABILITY
+───────────────────────────────────────────────────────────
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT
+HOLDER SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING BUT NOT
+LIMITED TO PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, LOSS OF
+USE, DATA, OR PROFITS, OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
+───────────────────────────────────────────────────────────
+8. TERMINATION
+───────────────────────────────────────────────────────────
+
+This License and the rights granted hereunder will terminate
+automatically upon any breach of its terms by You. Upon
+termination, You must immediately cease all use of the Software
+and destroy all copies in Your possession. Sections 5, 6, 7, 8,
+and 9 shall survive termination.
+
+───────────────────────────────────────────────────────────
+9. GOVERNING LAW AND SEVERABILITY
+───────────────────────────────────────────────────────────
+
+This License shall be governed by the laws of [Your Jurisdiction].
+If any provision of this License is held to be unenforceable,
+such provision shall be reformed only to the extent necessary to
+make it enforceable. The remaining provisions shall remain in
+full force and effect.
+
+───────────────────────────────────────────────────────────
+10. CONTACT
+───────────────────────────────────────────────────────────
+
+For commercial licensing inquiries, permissions beyond the scope
+of this License, or questions regarding permitted use:
+
+  Asad Mirza
+  asadmirza33165@gmail.com
