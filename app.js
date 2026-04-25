@@ -1,5 +1,5 @@
 import { splitReferences, extractFeatures, buildQuery } from './parser.js';
-import { verifyDOI, searchOpenAlex, searchBooks } from './verifier.js';
+import { verifyDOI, searchPubMed, searchOpenAlex, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const query = buildQuery(ref);
 
           let doiVerified = false;
+          let pubmedMatch = null;
           let openAlexMatch = null;
           let bookMatch = null;
 
@@ -51,12 +52,17 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (!doiVerified) {
+            const hit = await searchPubMed(query);
+            if (hit && isRelevantMatch(ref, hit.title)) pubmedMatch = hit;
+          }
+
+          if (!doiVerified && !pubmedMatch) {
             const hit = await searchOpenAlex(query);
             const title = hit?.title || hit?.display_name;
             if (hit && isRelevantMatch(ref, title)) openAlexMatch = hit;
           }
 
-          if (!doiVerified && !openAlexMatch && useBooks.checked) {
+          if (!doiVerified && !pubmedMatch && !openAlexMatch && useBooks.checked) {
             const hit = await searchBooks(query);
             const title = hit?.volumeInfo?.title;
             if (hit && isRelevantMatch(ref, title)) bookMatch = hit;
@@ -66,9 +72,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const scored = scoreReference(features, {
             doiVerified,
+            pubmedMatch,
             openAlexMatch,
             bookMatch,
-            anyMatch: Boolean(doiVerified || openAlexMatch || bookMatch),
+            anyMatch: Boolean(doiVerified || pubmedMatch || openAlexMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
@@ -107,8 +114,13 @@ function isRelevantMatch(refText, resultTitle) {
   const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
     .filter(w => w.length > 4 && !STOPWORDS.has(w));
   const refSet = new Set(words(refText));
-  const shared = words(resultTitle).filter(w => refSet.has(w));
-  return shared.length >= 2;
+  const titleWords = words(resultTitle);
+  if (titleWords.length === 0) return false;
+  const shared = titleWords.filter(w => refSet.has(w));
+  // Need at least 2 shared words AND ≥25% of the result title covered.
+  // The percentage check stops domain-general papers (which share field keywords
+  // with everything) from counting as a match in narrow subject areas.
+  return shared.length >= 2 && shared.length / titleWords.length >= 0.25;
 }
 
 /**

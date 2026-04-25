@@ -13,7 +13,9 @@ export function splitReferences(text) {
  * Extract easily detectable signals from a single reference.
  */
 export function extractFeatures(ref) {
-  const doiMatch = ref.match(/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+\b/);
+  // Collapse line breaks that split a DOI (e.g. "10.\n1038/...")
+  const singleLine = ref.replace(/10\.\s*\n\s*/g, '10.');
+  const doiMatch = singleLine.match(/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+\b/);
   const yearMatch = ref.match(/\b((?:19|20)\d{2})\b/);
   const isbnMatch = ref.match(/\b(?:97[89][- ]?)?(?:\d[- ]?){9}[\dXx]\b/);
 

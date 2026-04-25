@@ -31,6 +31,27 @@ export async function searchOpenAlex(query) {
 }
 
 /**
+ * Search PubMed via NCBI E-utilities. Returns the summary record or null.
+ */
+export async function searchPubMed(query) {
+  try {
+    const searchUrl = `${API.PUBMED_SEARCH}?db=pubmed&term=${encodeURIComponent(query)}&retmax=1&retmode=json`;
+    const searchRes = await fetch(searchUrl);
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const ids = searchData.esearchresult?.idlist;
+    if (!ids || ids.length === 0) return null;
+    const summaryUrl = `${API.PUBMED_SUMMARY}?db=pubmed&id=${ids[0]}&retmode=json`;
+    const summaryRes = await fetch(summaryUrl);
+    if (!summaryRes.ok) return null;
+    const summaryData = await summaryRes.json();
+    return summaryData.result?.[ids[0]] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Search Google Books. Returns first volume or null.
  */
 export async function searchBooks(query) {
