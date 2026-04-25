@@ -5,12 +5,12 @@ export const API = {
 };
 
 export const SCORE = {
-  DOI_VERIFIED:      60,
+  DOI_VERIFIED:      75,
   OPENALEX_MATCH:    40,
-  BOOK_MATCH:        35,
+  BOOK_MATCH:        40,
   NO_MATCH_PENALTY: -50,
   VALID_THRESHOLD:   70,
-  WARNING_THRESHOLD: 40
+  WARNING_THRESHOLD: 35
 };
 
 export const CONCURRENCY_LIMIT = 5;

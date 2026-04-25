@@ -51,11 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (!doiVerified) {
-            openAlexMatch = await searchOpenAlex(query);
+            const hit = await searchOpenAlex(query);
+            const title = hit?.title || hit?.display_name;
+            if (hit && isRelevantMatch(ref, title)) openAlexMatch = hit;
           }
 
           if (!doiVerified && !openAlexMatch && useBooks.checked) {
-            bookMatch = await searchBooks(query);
+            const hit = await searchBooks(query);
+            const title = hit?.volumeInfo?.title;
+            if (hit && isRelevantMatch(ref, title)) bookMatch = hit;
           }
 
           const titleConfirmed = checkTitleMatch(features, openAlexMatch, bookMatch);
@@ -88,6 +92,24 @@ document.addEventListener('DOMContentLoaded', () => {
     clearStatus();
   });
 });
+
+/**
+ * Require at least 2 meaningful words shared between the reference text and a
+ * result title before counting the result as a real match.
+ */
+function isRelevantMatch(refText, resultTitle) {
+  if (!resultTitle) return false;
+  const STOPWORDS = new Set([
+    'about', 'after', 'also', 'based', 'been', 'from', 'have', 'into',
+    'model', 'method', 'methods', 'novel', 'paper', 'study', 'that',
+    'their', 'there', 'these', 'this', 'through', 'using', 'which', 'with'
+  ]);
+  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 4 && !STOPWORDS.has(w));
+  const refSet = new Set(words(refText));
+  const shared = words(resultTitle).filter(w => refSet.has(w));
+  return shared.length >= 2;
+}
 
 /**
  * Loose substring match between extracted title (if any) and a result's title.
