@@ -1,7 +1,7 @@
 import { API } from './config.js';
 
 /**
- * Verify a DOI against CrossRef. Returns an object { ok, data } or { ok: false }.
+ * Verify a DOI against CrossRef. Returns { ok, data } or { ok: false }.
  */
 export async function verifyDOI(doi) {
   try {
@@ -16,32 +16,19 @@ export async function verifyDOI(doi) {
 }
 
 /**
- * Search OpenAlex for a paper-like reference. Returns first result or null.
+ * CrossRef bibliographic text search — designed for matching full reference strings.
+ * Returns the top result or null.
  */
-export async function searchOpenAlex(query) {
+export async function searchCrossRefText(query) {
   try {
-    const url = `${API.OPENALEX}?search=${encodeURIComponent(query)}&per_page=1`;
+    const url = `${API.CROSSREF_SEARCH}?query.bibliographic=${encodeURIComponent(query)}&rows=1&select=DOI,title,author,score,published`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.results?.[0] || null;
+    if (data.status !== 'ok') return null;
+    return data.message?.items?.[0] || null;
   } catch {
     return null;
-  }
-}
-
-/**
- * Search Semantic Scholar. Returns up to 3 candidate results (array), or [].
- */
-export async function searchSemanticScholar(query) {
-  try {
-    const url = `${API.SEMANTIC_SCHOLAR}?query=${encodeURIComponent(query)}&limit=3&fields=title,year,externalIds`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
   }
 }
 

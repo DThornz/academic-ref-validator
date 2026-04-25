@@ -24,28 +24,28 @@ Then open `http://localhost:8000`.
 
 1. **Segmentation** — splits pasted text into individual references, handling numbered lists, bracket markers, and blank-line-separated formats.
 2. **Feature extraction** — detects DOIs, ISBNs, publication years, and quoted title fragments.
-3. **Verification** — each reference is checked against multiple sources in order of precision:
+3. **Verification** — each reference is checked against three sources:
 
    | Source | Used for |
    |--------|----------|
    | **CrossRef** (DOI lookup) | Definitive confirmation when a DOI is present |
-   | **Semantic Scholar** | Broad academic coverage across all disciplines |
+   | **CrossRef** (bibliographic text search) | Matches full reference strings against CrossRef's 140M+ record index |
    | **PubMed** | Authoritative for biomedical and life-science journals |
-   | **OpenAlex** | Fallback for papers not found by the above |
    | **Google Books** | Fallback for book-like citations (optional) |
+
+   CrossRef text search and PubMed run in parallel for speed.
 
 4. **Scoring** — a 0–100 score is computed from the evidence:
 
    | Evidence | Points |
    |----------|--------|
    | DOI verified in CrossRef | +75 |
-   | Found in Semantic Scholar | +50 |
+   | Found via CrossRef text search | +50 |
    | Found in PubMed | +45 |
-   | Found in OpenAlex | +35 |
    | Found in Google Books | +35 |
    | No match anywhere | −50 |
 
-   **Valid** ≥ 70 · **Needs review** 30–69 · **Likely fabricated** < 30
+   **Valid** ≥ 70 · **Needs review** 25–69 · **Likely fabricated** < 25
 
 ## Files
 

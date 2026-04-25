@@ -65,7 +65,7 @@ export function buildCoreQuery(ref, features) {
     .replace(/\b\d+[–\-]\d+\b/g, ' ')  // page ranges: 1-7, 329-349
     .replace(/\(\d{4}\)\.?/g, ' ')      // (2016).
     .replace(/\b\d{1,3}\b/g, ' ')       // small standalone numbers (vol, issue)
-    .replace(/[,;&]/g, ' ')
+    .replace(/[,;&.]/g, ' ')            // commas, semicolons, ampersands, periods
     .replace(/\s+/g, ' ')
     .trim();
   if (features?.year) q += ` ${features.year}`;

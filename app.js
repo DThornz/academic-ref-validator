@@ -1,5 +1,5 @@
 import { splitReferences, extractFeatures, buildQuery, buildCoreQuery } from './parser.js';
-import { verifyDOI, searchSemanticScholar, searchPubMed, searchOpenAlex, searchBooks } from './verifier.js';
+import { verifyDOI, searchCrossRefText, searchPubMed, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -39,12 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const batchResults = await Promise.all(
         batch.map(async (ref) => {
           const features = extractFeatures(ref);
-          const query = buildQuery(ref);
+          const coreQuery = buildCoreQuery(ref, features);
+          const booksQuery = buildQuery(ref);
 
           let doiVerified = false;
-          let semanticScholarMatch = null;
+          let crossRefTextMatch = null;
           let pubmedMatch = null;
-          let openAlexMatch = null;
           let bookMatch = null;
 
           if (features.doi) {
@@ -53,45 +53,31 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (!doiVerified) {
-            const coreQuery = buildCoreQuery(ref, features);
-
-            // Semantic Scholar and PubMed run in parallel — both use the cleaned query.
-            const [ssResults, pubmedHit] = await Promise.all([
-              searchSemanticScholar(coreQuery),
+            // CrossRef bibliographic search and PubMed run in parallel.
+            const [crHit, pubHit] = await Promise.all([
+              searchCrossRefText(coreQuery),
               searchPubMed(coreQuery)
             ]);
 
-            // Semantic Scholar: pick first of up to 3 candidates that shares a word.
-            const ssHit = ssResults.find(r => isBasicMatch(ref, r.title));
-            if (ssHit) semanticScholarMatch = ssHit;
-
-            if (pubmedHit && isBasicMatch(ref, pubmedHit.title)) pubmedMatch = pubmedHit;
-
-            // OpenAlex as fallback — stricter relevance check because it tends to
-            // return topically related but wrong papers.
-            if (!semanticScholarMatch && !pubmedMatch) {
-              const hit = await searchOpenAlex(query);
-              const title = hit?.title || hit?.display_name;
-              if (hit && isRelevantMatch(ref, title)) openAlexMatch = hit;
-            }
+            if (crHit && isBasicMatch(ref, crHit.title?.[0])) crossRefTextMatch = crHit;
+            if (pubHit && isBasicMatch(ref, pubHit.title))    pubmedMatch = pubHit;
 
             // Google Books as last resort for book-like citations.
-            if (!semanticScholarMatch && !pubmedMatch && !openAlexMatch && useBooks.checked) {
-              const hit = await searchBooks(query);
+            if (!crossRefTextMatch && !pubmedMatch && useBooks.checked) {
+              const hit = await searchBooks(booksQuery);
               const title = hit?.volumeInfo?.title;
-              if (hit && isRelevantMatch(ref, title)) bookMatch = hit;
+              if (hit && isBasicMatch(ref, title)) bookMatch = hit;
             }
           }
 
-          const titleConfirmed = checkTitleMatch(features, semanticScholarMatch, openAlexMatch, bookMatch);
+          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, pubmedMatch, bookMatch);
 
           const scored = scoreReference(features, {
             doiVerified,
-            semanticScholarMatch,
+            crossRefTextMatch,
             pubmedMatch,
-            openAlexMatch,
             bookMatch,
-            anyMatch: Boolean(doiVerified || semanticScholarMatch || pubmedMatch || openAlexMatch || bookMatch),
+            anyMatch: Boolean(doiVerified || crossRefTextMatch || pubmedMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
@@ -117,8 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Light relevance check for trusted APIs (Semantic Scholar, PubMed).
- * Requires at least one meaningful word shared between the reference and the result title.
+ * Require at least one meaningful word shared between the reference text and
+ * the result title. Used for CrossRef text search and PubMed, which are precise
+ * enough that one shared word is sufficient to confirm relevance.
  */
 function isBasicMatch(refText, resultTitle) {
   if (!resultTitle) return false;
@@ -134,37 +121,15 @@ function isBasicMatch(refText, resultTitle) {
 }
 
 /**
- * Stricter relevance check for OpenAlex / Google Books, which tend to return
- * topically related but wrong papers. Requires ≥2 shared words AND ≥25% of
- * the result title covered — the percentage check prevents domain-general
- * papers that share only field-level keywords from passing.
- */
-function isRelevantMatch(refText, resultTitle) {
-  if (!resultTitle) return false;
-  const STOPWORDS = new Set([
-    'about', 'after', 'also', 'based', 'been', 'from', 'have', 'into',
-    'model', 'method', 'methods', 'novel', 'paper', 'study', 'that',
-    'their', 'there', 'these', 'this', 'through', 'using', 'which', 'with'
-  ]);
-  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 4 && !STOPWORDS.has(w));
-  const refSet = new Set(words(refText));
-  const titleWords = words(resultTitle);
-  if (titleWords.length === 0) return false;
-  const shared = titleWords.filter(w => refSet.has(w));
-  return shared.length >= 2 && shared.length / titleWords.length >= 0.25;
-}
-
-/**
  * Loose substring match between extracted title (if any) and a result's title.
+ * Used only in strict mode.
  */
-function checkTitleMatch(features, semanticScholarMatch, openAlexMatch, bookMatch) {
+function checkTitleMatch(features, crossRefTextMatch, pubmedMatch, bookMatch) {
   if (!features.title) return false;
   const target = features.title.toLowerCase();
   const candidates = [
-    semanticScholarMatch?.title,
-    openAlexMatch?.title,
-    openAlexMatch?.display_name,
+    crossRefTextMatch?.title?.[0],
+    pubmedMatch?.title,
     bookMatch?.volumeInfo?.title
   ].filter(Boolean).map(s => s.toLowerCase());
   return candidates.some(t => t.includes(target) || target.includes(t));

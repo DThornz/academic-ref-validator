@@ -2,7 +2,6 @@ import { SCORE } from './config.js';
 
 /**
  * Compute a 0-100 score and classification for one reference.
- * results: { doiVerified, openAlexMatch, bookMatch, anyMatch, titleConfirmed }
  */
 export function scoreReference(features, results, options = {}) {
   let score = 0;
@@ -15,12 +14,12 @@ export function scoreReference(features, results, options = {}) {
     reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef` });
   }
 
-  if (results.semanticScholarMatch) {
-    score += SCORE.SEMANTIC_SCHOLAR_MATCH;
-    const title = results.semanticScholarMatch.title;
+  if (results.crossRefTextMatch) {
+    score += SCORE.CROSSREF_TEXT_MATCH;
+    const title = results.crossRefTextMatch.title?.[0];
     reasons.push({
       kind: 'positive',
-      text: title ? `Found in Semantic Scholar: "${truncate(title, 120)}"` : 'Found in Semantic Scholar'
+      text: title ? `Found in CrossRef: "${truncate(title, 120)}"` : 'Found in CrossRef'
     });
   }
 
@@ -30,15 +29,6 @@ export function scoreReference(features, results, options = {}) {
     reasons.push({
       kind: 'positive',
       text: title ? `Found in PubMed: "${truncate(title, 120)}"` : 'Found in PubMed'
-    });
-  }
-
-  if (results.openAlexMatch) {
-    score += SCORE.OPENALEX_MATCH;
-    const title = results.openAlexMatch.title || results.openAlexMatch.display_name;
-    reasons.push({
-      kind: 'positive',
-      text: title ? `Found in OpenAlex: "${truncate(title, 120)}"` : 'Found in OpenAlex'
     });
   }
 
@@ -53,7 +43,7 @@ export function scoreReference(features, results, options = {}) {
 
   if (!results.anyMatch) {
     score += SCORE.NO_MATCH_PENALTY;
-    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Semantic Scholar, PubMed, OpenAlex, or Google Books' });
+    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, PubMed, or Google Books' });
   }
 
   if (features.year) {
