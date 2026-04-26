@@ -121,15 +121,17 @@ function isCrossRefMatch(refText, refYear, crHit) {
     'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
     'through', 'using', 'which', 'with'
   ]);
-  const tokenize = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 3 && !STOPWORDS.has(w));
+  const tokenize = s => [...new Set(
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+     .filter(w => w.length > 3 && !STOPWORDS.has(w))
+  )];
   const refSet = new Set(tokenize(refText));
   const titleTokens = tokenize(title);
   if (titleTokens.length === 0) return false;
   const matched = titleTokens.filter(w => refSet.has(w));
-  if (matched.length / titleTokens.length < 0.75) return false;
+  if (matched.length / titleTokens.length < 0.85) return false;
   const currentYear = new Date().getFullYear();
-  if (refYear && refYear >= 1900 && refYear <= currentYear) {
+  if (refYear && refYear >= 1500) {
     const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-print']?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-online']?.['date-parts']?.[0]?.[0];
