@@ -131,7 +131,7 @@ function isCrossRefMatch(refText, refYear, crHit) {
   const matched = titleTokens.filter(w => refSet.has(w));
   if (matched.length / titleTokens.length < 0.85) return false;
   const currentYear = new Date().getFullYear();
-  if (refYear && refYear >= 1500) {
+  if (refYear && refYear >= 1900) {
     const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-print']?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-online']?.['date-parts']?.[0]?.[0];
