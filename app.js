@@ -109,8 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Stricter match for CrossRef text search results.
- * Requires ≥3 shared meaningful words AND year within 5 years of the reference.
+ * Strict match for CrossRef text search results.
+ * Requires ≥75% of the CrossRef title's meaningful words to appear in the
+ * reference text (near-full title coverage), plus year within 5 years.
  */
 function isCrossRefMatch(refText, refYear, crHit) {
   const title = crHit?.title?.[0];
@@ -120,11 +121,13 @@ function isCrossRefMatch(refText, refYear, crHit) {
     'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
     'through', 'using', 'which', 'with'
   ]);
-  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 4 && !STOPWORDS.has(w));
-  const refSet = new Set(words(refText));
-  const shared = words(title).filter(w => refSet.has(w));
-  if (shared.length < 3) return false;
+  const tokenize = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 3 && !STOPWORDS.has(w));
+  const refSet = new Set(tokenize(refText));
+  const titleTokens = tokenize(title);
+  if (titleTokens.length === 0) return false;
+  const matched = titleTokens.filter(w => refSet.has(w));
+  if (matched.length / titleTokens.length < 0.75) return false;
   const currentYear = new Date().getFullYear();
   if (refYear && refYear >= 1900 && refYear <= currentYear) {
     const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
