@@ -66,9 +66,7 @@ export function scoreReference(features, results, options = {}) {
 
   const finalScore = Math.max(0, Math.min(100, score));
 
-  let label = 'invalid';
-  if (finalScore >= SCORE.VALID_THRESHOLD) label = 'valid';
-  else if (finalScore >= SCORE.WARNING_THRESHOLD) label = 'warning';
+  const label = finalScore >= SCORE.VALID_THRESHOLD ? 'valid' : 'warning';
 
   return { score: finalScore, label, reasons };
 }

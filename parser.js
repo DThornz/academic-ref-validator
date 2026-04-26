@@ -90,14 +90,28 @@ export function buildQuery(ref) {
 }
 
 /**
- * Build a clean query optimised for text-search APIs (Semantic Scholar, PubMed).
- * Removes "et al.", page ranges, year-in-parens, and small standalone numbers so
- * the API sees mostly title words and author surnames rather than citation metadata.
+ * Light query for CrossRef bibliographic text search.
+ * CrossRef's query.bibliographic field is designed for full formatted reference
+ * strings — author punctuation, journal names, and page ranges all help it match.
+ * We only strip artefacts that corrupt the query.
  */
+export function buildCrossRefQuery(ref) {
+  let q = ref
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2')  // rejoin hyphenated line breaks
+    .replace(/(\w)- ([a-z]\w{2,})/g, '$1$2') // also handle space-separated PDF splits
+    .replace(/[™®©℠]/g, '')                   // strip trademark/copyright symbols
+    .replace(/\n/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\bdoi:\s*\S+/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return q.slice(0, 220);
+}
+
 export function buildCoreQuery(ref, features) {
   let q = ref
-    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2') // rejoin hyphenated line breaks: "perfor-\nmance" → "performance"
-    .replace(/[™®©℠]/g, '')                  // strip trademark/copyright symbols
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2') // rejoin hyphenated line breaks
+    .replace(/(\w)- ([a-z]\w{2,})/g, '$1$2') // space-separated PDF splits
+    .replace(/[™®©℠]/g, '')
     .replace(/\n/g, ' ')
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\bdoi:\s*\S+/gi, ' ')

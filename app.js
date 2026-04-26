@@ -1,4 +1,4 @@
-import { splitReferences, extractFeatures, buildQuery, buildCoreQuery, detectStyle } from './parser.js';
+import { splitReferences, extractFeatures, buildQuery, buildCoreQuery, buildCrossRefQuery, detectStyle } from './parser.js';
 import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         batch.map(async (ref) => {
           const features    = extractFeatures(ref);
           const coreQuery   = buildCoreQuery(ref, features);
+          const crBaseQuery = buildCrossRefQuery(ref);
           const booksQuery  = buildQuery(ref);
 
           let doiVerified      = false;
@@ -57,15 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // CrossRef text search and Europe PMC run in parallel.
             // If a DOI was detected but lookup failed (transient error), also try
             // CrossRef text search with the DOI itself as a fallback query.
+            // CrossRef gets the lightly-processed full reference string.
             const crQuery = features.doi
-              ? `${coreQuery} ${features.doi}`
-              : coreQuery;
+              ? `${crBaseQuery} ${features.doi}`
+              : crBaseQuery;
 
-            // Strip 1–2 letter tokens (author initials) from the Europe PMC query:
-            // CrossRef handles full reference strings natively; Europe PMC free-text
-            // search treats every word as required, so bare initials kill recall.
+            // Europe PMC free-text search requires every word to match, so strip
+            // 1-3 letter tokens (author initials + short abbreviations like "Van",
+            // "Dis", "ATS") that would otherwise kill recall.
             const epmcQuery = coreQuery
-              .replace(/\b[A-Za-z]{1,2}\b/g, ' ')
+              .replace(/\b[A-Za-z]{1,3}\b/g, ' ')
               .replace(/\s+/g, ' ').trim();
 
             const [crHit, epmcHit] = await Promise.all([
@@ -86,6 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch);
 
+          // Best URL to let the user verify the matched source.
+          let matchUrl = null;
+          if (doiVerified) {
+            matchUrl = `https://doi.org/${features.doi}`;
+          } else if (crossRefTextMatch?.DOI) {
+            matchUrl = `https://doi.org/${crossRefTextMatch.DOI}`;
+          } else if (europePMCMatch?.pmid) {
+            matchUrl = `https://pubmed.ncbi.nlm.nih.gov/${europePMCMatch.pmid}/`;
+          } else if (europePMCMatch?.doi) {
+            matchUrl = `https://doi.org/${europePMCMatch.doi}`;
+          } else if (bookMatch?.volumeInfo?.infoLink) {
+            matchUrl = bookMatch.volumeInfo.infoLink;
+          }
+
           const scored = scoreReference(features, {
             doiVerified,
             crossRefTextMatch,
@@ -98,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
           completed += 1;
           setStatus(`Analyzing ${completed} / ${refs.length}…`, true);
 
-          return { ...scored, raw: ref };
+          return { ...scored, raw: ref, matchUrl };
         })
       );
       results.push(...batchResults);
@@ -133,7 +149,8 @@ function isCrossRefMatch(refText, refYear, crHit) {
     s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
      .filter(w => w.length > 3 && !STOPWORDS.has(w))
   )];
-  const refSet = new Set(tokenize(refText));
+  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const refSet = new Set(tokenize(normRef));
   const titleTokens = tokenize(title);
   if (titleTokens.length === 0) return false;
   const matched = titleTokens.filter(w => refSet.has(w));
@@ -161,7 +178,8 @@ function isBasicMatch(refText, resultTitle) {
   ]);
   const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
     .filter(w => w.length > 4 && !STOPWORDS.has(w));
-  const refSet = new Set(words(refText));
+  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const refSet = new Set(words(normRef));
   return words(resultTitle).some(w => refSet.has(w));
 }
 

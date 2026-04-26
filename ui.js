@@ -1,40 +1,4 @@
-/**
- * Render an array of scored results into the #results div.
- */
-export function renderResults(results, detectedStyle = null) {
-  const container = document.getElementById('results');
-  container.innerHTML = '';
-
-  if (results.length === 0) {
-    container.innerHTML = '<p>No references found or analyzed.</p>';
-    return;
-  }
-
-  const summary = buildSummary(results, detectedStyle);
-  container.appendChild(summary);
-
-  results.forEach((res, idx) => {
-    const card = document.createElement('div');
-    card.className = `result-card ${res.label}`;
-
-    const reasonsHtml = res.reasons.map(r => {
-      const kind = typeof r === 'string' ? 'neutral' : (r.kind || 'neutral');
-      const text = typeof r === 'string' ? r : r.text;
-      return `<li class="${kind}">${escapeHTML(text)}</li>`;
-    }).join('');
-
-    card.innerHTML = `
-      <div class="result-header">
-        <span class="ref-num">[${idx + 1}]</span>
-        <div class="score">Score: ${res.score}</div>
-        <span class="label-badge">${res.label}</span>
-      </div>
-      <div class="reference-text">${escapeHTML(res.raw)}</div>
-      <ul class="reasons-list">${reasonsHtml}</ul>
-    `;
-    container.appendChild(card);
-  });
-}
+const DISPLAY_LABELS = { valid: 'Valid', warning: 'Needs Review' };
 
 const STYLE_LABELS = {
   APA:       'APA 7th',
@@ -45,23 +9,98 @@ const STYLE_LABELS = {
   Harvard:   'Harvard',
 };
 
+/**
+ * Render scored results into the #results div as a two-column layout.
+ */
+export function renderResults(results, detectedStyle = null) {
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+
+  if (results.length === 0) {
+    container.innerHTML = '<p>No references found or analyzed.</p>';
+    return;
+  }
+
+  container.appendChild(buildSummary(results, detectedStyle));
+
+  const indexed = results.map((r, i) => ({ ...r, origIdx: i }));
+  const validItems  = indexed.filter(r => r.label === 'valid');
+  const reviewItems = indexed.filter(r => r.label !== 'valid');
+
+  const columns = document.createElement('div');
+  columns.className = 'results-columns';
+  columns.appendChild(buildColumn('valid',   'Valid',        validItems));
+  columns.appendChild(buildColumn('warning', 'Needs Review', reviewItems));
+  container.appendChild(columns);
+}
+
+function buildColumn(cls, title, items) {
+  const col = document.createElement('div');
+  col.className = 'results-column';
+
+  const header = document.createElement('div');
+  header.className = `column-header ${cls}`;
+  header.textContent = `${title} (${items.length})`;
+  col.appendChild(header);
+
+  const cards = document.createElement('div');
+  cards.className = 'column-cards';
+
+  if (items.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'column-empty';
+    empty.textContent = 'None';
+    cards.appendChild(empty);
+  } else {
+    items.forEach(res => cards.appendChild(buildCard(res)));
+  }
+
+  col.appendChild(cards);
+  return col;
+}
+
+function buildCard(res) {
+  const card = document.createElement('div');
+  card.className = `result-card ${res.label}`;
+
+  const reasonsHtml = res.reasons.map(r => {
+    const kind = typeof r === 'string' ? 'neutral' : (r.kind || 'neutral');
+    const text = typeof r === 'string' ? r : r.text;
+    return `<li class="${kind}">${escapeHTML(text)}</li>`;
+  }).join('');
+
+  const verifyLink = res.matchUrl
+    ? `<a href="${escapeHTML(res.matchUrl)}" target="_blank" rel="noopener noreferrer" class="match-link">Verify source ↗</a>`
+    : '';
+
+  card.innerHTML = `
+    <div class="result-header">
+      <span class="ref-num">[${res.origIdx + 1}]</span>
+      <div class="score">Score: ${res.score}</div>
+      <span class="label-badge">${DISPLAY_LABELS[res.label] ?? res.label}</span>
+    </div>
+    <div class="reference-text">${escapeHTML(res.raw)}</div>
+    <ul class="reasons-list">${reasonsHtml}</ul>
+    ${verifyLink}
+  `;
+  return card;
+}
+
 function buildSummary(results, detectedStyle) {
-  const counts = { valid: 0, warning: 0, invalid: 0 };
-  results.forEach(r => { counts[r.label] = (counts[r.label] || 0) + 1; });
-  const total = results.length;
+  const validCount   = results.filter(r => r.label === 'valid').length;
+  const reviewCount  = results.length - validCount;
+  const total        = results.length;
 
   const segments = [
-    { key: 'valid',   count: counts.valid   },
-    { key: 'warning', count: counts.warning },
-    { key: 'invalid', count: counts.invalid },
+    { key: 'valid',   count: validCount  },
+    { key: 'warning', count: reviewCount },
   ].filter(s => s.count > 0)
    .map(s => `<div class="bar-segment ${s.key}" style="flex:${s.count}"></div>`)
    .join('');
 
   const labels = [
-    { key: 'valid',   name: 'Valid',             count: counts.valid   },
-    { key: 'warning', name: 'Needs review',      count: counts.warning },
-    { key: 'invalid', name: 'Likely fabricated', count: counts.invalid },
+    { key: 'valid',   name: 'Valid',        count: validCount  },
+    { key: 'warning', name: 'Needs Review', count: reviewCount },
   ].map(s => `
     <div class="summary-label ${s.key}">
       <span class="label-count">${s.count}</span>
