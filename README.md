@@ -73,7 +73,7 @@ Then open `http://localhost:8000`.
 
 ## TODO
 
-Suggested areas for future improvement:
+Future areas for future improvement:
 
 ### Verification
 - **Semantic Scholar** — broad coverage of computer science and STEM papers, good complement to CrossRef and Europe PMC
