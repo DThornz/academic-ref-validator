@@ -96,6 +96,8 @@ export function buildQuery(ref) {
  */
 export function buildCoreQuery(ref, features) {
   let q = ref
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2') // rejoin hyphenated line breaks: "perfor-\nmance" → "performance"
+    .replace(/[™®©℠]/g, '')                  // strip trademark/copyright symbols
     .replace(/\n/g, ' ')
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\bdoi:\s*\S+/gi, ' ')
