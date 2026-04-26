@@ -61,9 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
               ? `${coreQuery} ${features.doi}`
               : coreQuery;
 
+            // Strip 1–2 letter tokens (author initials) from the Europe PMC query:
+            // CrossRef handles full reference strings natively; Europe PMC free-text
+            // search treats every word as required, so bare initials kill recall.
+            const epmcQuery = coreQuery
+              .replace(/\b[A-Za-z]{1,2}\b/g, ' ')
+              .replace(/\s+/g, ' ').trim();
+
             const [crHit, epmcHit] = await Promise.all([
               searchCrossRefText(crQuery),
-              searchEuropePMC(coreQuery)
+              searchEuropePMC(epmcQuery)
             ]);
 
             if (crHit   && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
