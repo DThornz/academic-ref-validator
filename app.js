@@ -1,5 +1,5 @@
 import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extractBestSentence, detectStyle } from './parser.js';
-import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks, searchOpenLibrary } from './verifier.js';
+import { verifyDOI, verifyISBN, searchCrossRefText, searchEuropePMC, searchSemanticScholar, searchArXiv, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const useBooks   = document.getElementById('useBooks');
   const strictMode = document.getElementById('strictMode');
   const resultsEl  = document.getElementById('results');
+
+  // Keyboard shortcuts: Ctrl/Cmd+Enter to analyze, Escape to clear.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') clearBtn.click();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !analyzeBtn.disabled) analyzeBtn.click();
+  });
 
   analyzeBtn.addEventListener('click', async () => {
     const text = inputText.value.trim();
@@ -44,48 +50,55 @@ document.addEventListener('DOMContentLoaded', () => {
           const booksQuery  = buildQuery(ref);
 
           let doiVerified      = false;
+          let isbnVerified     = false;
           let crossRefTextMatch = null;
           let europePMCMatch   = null;
+          let ssMatch          = null;
+          let arxivMatch       = null;
           let bookMatch        = null;
 
-          if (features.doi) {
-            const doiRes = await verifyDOI(features.doi);
-            doiVerified = doiRes.ok;
-          }
+          // DOI and ISBN verification run in parallel.
+          const [doiRes, isbnOk] = await Promise.all([
+            features.doi  ? verifyDOI(features.doi)   : Promise.resolve({ ok: false }),
+            features.isbn ? verifyISBN(features.isbn) : Promise.resolve(false)
+          ]);
+          doiVerified  = doiRes.ok;
+          isbnVerified = isbnOk;
 
           if (!doiVerified) {
-            // CrossRef text search and Europe PMC run in parallel.
-            // If a DOI was detected but lookup failed (transient error), also try
-            // CrossRef text search with the DOI itself as a fallback query.
-            // CrossRef gets the lightly-processed full reference string.
             const crQuery = features.doi
               ? `${crBaseQuery} ${features.doi}`
               : crBaseQuery;
 
-            // Europe PMC requires every word to match (AND logic). Build a
-            // title-focused query from the best sentence fragment, then strip
-            // short tokens (author initials, abbreviations like "ATS", "Van").
+            // Europe PMC, Semantic Scholar, and arXiv all benefit from a
+            // title-focused query: extract the best sentence fragment, strip
+            // short tokens (initials, abbreviations).
             const titleSentence = extractBestSentence(ref);
-            const epmcBase = titleSentence
+            const titleBase = titleSentence
               .replace(/[™®©℠]/g, '')
               .replace(/https?:\/\/\S+/g, ' ')
               .replace(/\bdoi:\s*\S+/gi, ' ')
               .replace(/[,;&.]/g, ' ')
               .replace(/\s+/g, ' ').trim();
-            const epmcQuery = (features.year ? `${epmcBase} ${features.year}` : epmcBase)
+            const titleQuery = (features.year ? `${titleBase} ${features.year}` : titleBase)
               .replace(/\b[A-Za-z]{1,3}\b/g, ' ')
               .replace(/\s+/g, ' ').trim();
 
-            const [crHit, epmcHit] = await Promise.all([
+            // All four text-search APIs run in parallel.
+            const [crHit, epmcHit, ssHit, arxivHit] = await Promise.all([
               searchCrossRefText(crQuery),
-              searchEuropePMC(epmcQuery)
+              searchEuropePMC(titleQuery),
+              searchSemanticScholar(crQuery),
+              searchArXiv(titleQuery)
             ]);
 
-            if (crHit   && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
-            if (epmcHit && isBasicMatch(ref, epmcHit.title))          europePMCMatch    = epmcHit;
+            if (crHit    && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
+            if (epmcHit  && isBasicMatch(ref, epmcHit.title))           europePMCMatch    = epmcHit;
+            if (ssHit    && isBasicMatch(ref, ssHit.title))             ssMatch           = ssHit;
+            if (arxivHit && isBasicMatch(ref, arxivHit.title))          arxivMatch        = arxivHit;
 
-            // Book sources as last resort for book-like citations.
-            if (!crossRefTextMatch && !europePMCMatch && useBooks.checked) {
+            // Book databases as last resort for book-like citations.
+            if (!crossRefTextMatch && !europePMCMatch && !ssMatch && !arxivMatch && useBooks.checked) {
               const [gbHit, olHit] = await Promise.all([
                 searchBooks(booksQuery),
                 searchOpenLibrary(booksQuery)
@@ -99,28 +112,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
 
-          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch);
+          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
 
-          // Best URL to let the user verify the matched source.
+          // Best URL for the user to inspect the matched source.
           let matchUrl = null;
           if (doiVerified) {
             matchUrl = `https://doi.org/${features.doi}`;
+          } else if (isbnVerified && features.isbn) {
+            matchUrl = `https://openlibrary.org/isbn/${features.isbn.replace(/[- ]/g, '')}`;
           } else if (crossRefTextMatch?.DOI) {
             matchUrl = `https://doi.org/${crossRefTextMatch.DOI}`;
           } else if (europePMCMatch?.pmid) {
             matchUrl = `https://pubmed.ncbi.nlm.nih.gov/${europePMCMatch.pmid}/`;
           } else if (europePMCMatch?.doi) {
             matchUrl = `https://doi.org/${europePMCMatch.doi}`;
+          } else if (ssMatch?.paperId) {
+            matchUrl = `https://www.semanticscholar.org/paper/${ssMatch.paperId}`;
+          } else if (arxivMatch?.url) {
+            matchUrl = arxivMatch.url;
           } else if (bookMatch?.volumeInfo?.infoLink) {
             matchUrl = bookMatch.volumeInfo.infoLink;
           }
 
           const scored = scoreReference(features, {
             doiVerified,
+            isbnVerified,
             crossRefTextMatch,
             europePMCMatch,
+            ssMatch,
+            arxivMatch,
             bookMatch,
-            anyMatch: Boolean(doiVerified || crossRefTextMatch || europePMCMatch || bookMatch),
+            anyMatch: Boolean(doiVerified || isbnVerified || crossRefTextMatch || europePMCMatch || ssMatch || arxivMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
@@ -147,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Strict match for CrossRef text search results.
- * Requires ≥75% of the CrossRef title's meaningful words to appear in the
+ * Requires ≥85% of the CrossRef title's meaningful words to appear in the
  * reference text (near-full title coverage), plus year within 5 years.
  */
 function isCrossRefMatch(refText, refYear, crHit) {
@@ -168,7 +190,6 @@ function isCrossRefMatch(refText, refYear, crHit) {
   if (titleTokens.length === 0) return false;
   const matched = titleTokens.filter(w => refSet.has(w));
   if (matched.length / titleTokens.length < 0.85) return false;
-  const currentYear = new Date().getFullYear();
   if (refYear && refYear >= 1900) {
     const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-print']?.['date-parts']?.[0]?.[0]
@@ -179,8 +200,8 @@ function isCrossRefMatch(refText, refYear, crHit) {
 }
 
 /**
- * Require at least one meaningful word shared between the reference text and
- * the result title. Used for Europe PMC.
+ * Require at least one meaningful word (>4 chars) shared between the reference
+ * text and a result title. Used for Europe PMC, Semantic Scholar, and arXiv.
  */
 function isBasicMatch(refText, resultTitle) {
   if (!resultTitle) return false;
@@ -197,16 +218,18 @@ function isBasicMatch(refText, resultTitle) {
 }
 
 /**
- * Loose substring match between extracted title (if any) and a result's title.
+ * Loose substring match between extracted title (if any) and any result title.
  * Used only in strict mode.
  */
-function checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch) {
+function checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch) {
   if (!features.title) return false;
   const target = features.title.toLowerCase();
   const candidates = [
     crossRefTextMatch?.title?.[0],
     europePMCMatch?.title,
-    bookMatch?.volumeInfo?.title
+    bookMatch?.volumeInfo?.title,
+    ssMatch?.title,
+    arxivMatch?.title
   ].filter(Boolean).map(s => s.toLowerCase());
   return candidates.some(t => t.includes(target) || target.includes(t));
 }

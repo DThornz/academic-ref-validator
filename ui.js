@@ -32,6 +32,12 @@ export function renderResults(results, detectedStyle = null) {
   columns.appendChild(buildColumn('valid',   'Valid',        validItems));
   columns.appendChild(buildColumn('warning', 'Needs Review', reviewItems));
   container.appendChild(columns);
+
+  const exportBtn = document.createElement('button');
+  exportBtn.className = 'secondary export-btn';
+  exportBtn.textContent = 'Export CSV';
+  exportBtn.addEventListener('click', () => exportCSV(results));
+  container.appendChild(exportBtn);
 }
 
 function buildColumn(cls, title, items) {
@@ -122,6 +128,30 @@ function buildSummary(results, detectedStyle) {
     <div class="summary-labels">${labels}</div>
   `;
   return summary;
+}
+
+function exportCSV(results) {
+  const header = ['#', 'Label', 'Match URL', 'Reference', 'Reasons'];
+  const rows = results.map((r, i) => {
+    const reasons = r.reasons
+      .map(r => (typeof r === 'string' ? r : r.text))
+      .join(' | ');
+    return [
+      i + 1,
+      r.label,
+      r.matchUrl || '',
+      `"${r.raw.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${reasons.replace(/"/g, '""')}"`
+    ].join(',');
+  });
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'references.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function escapeHTML(str) {

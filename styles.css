@@ -392,6 +392,53 @@ footer {
   color: var(--text-secondary);
 }
 
+.export-btn {
+  margin-top: 16px;
+  align-self: flex-start;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --valid: #3fb950;
+    --warning: #d29922;
+    --invalid: #f85149;
+    --border: #30363d;
+  }
+
+  button.primary:hover:not(:disabled) { background: #1f6feb; }
+  button.primary:disabled { background: #1f3a5f; color: #8b949e; }
+  button.secondary:hover { background: #21262d; }
+
+  .column-header.valid {
+    background: #0f2419;
+    color: var(--valid);
+    border-color: #1a4a2e;
+  }
+
+  .column-header.warning {
+    background: #2d1f00;
+    color: var(--warning);
+    border-color: #5a3e00;
+  }
+
+  .reference-text { background: #010409; }
+
+  .style-badge {
+    background: #1c2d4a;
+    border-color: #2d4a7a;
+  }
+
+  .style-badge.unknown {
+    background: #21262d;
+    border-color: var(--border);
+  }
+}
+
 @media (max-width: 600px) {
   #app { padding: 20px 14px 40px; }
   header h1 { font-size: 22px; }

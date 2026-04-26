@@ -14,6 +14,13 @@ export function scoreReference(features, results, options = {}) {
     reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef` });
   }
 
+  if (results.isbnVerified) {
+    score += SCORE.ISBN_VERIFIED;
+    reasons.push({ kind: 'positive', text: 'ISBN verified in Open Library' });
+  } else if (features.isbn) {
+    reasons.push({ kind: 'negative', text: `ISBN ${features.isbn} not found in Open Library` });
+  }
+
   if (results.crossRefTextMatch) {
     score += SCORE.CROSSREF_TEXT_MATCH;
     const title = results.crossRefTextMatch.title?.[0];
@@ -32,6 +39,24 @@ export function scoreReference(features, results, options = {}) {
     });
   }
 
+  if (results.ssMatch) {
+    score += SCORE.SEMANTIC_SCHOLAR_MATCH;
+    const title = results.ssMatch.title;
+    reasons.push({
+      kind: 'positive',
+      text: title ? `Found in Semantic Scholar: "${truncate(title, 120)}"` : 'Found in Semantic Scholar'
+    });
+  }
+
+  if (results.arxivMatch) {
+    score += SCORE.ARXIV_MATCH;
+    const title = results.arxivMatch.title;
+    reasons.push({
+      kind: 'positive',
+      text: title ? `Found in arXiv: "${truncate(title, 120)}"` : 'Found in arXiv'
+    });
+  }
+
   if (results.bookMatch) {
     score += SCORE.BOOK_MATCH;
     const title = results.bookMatch.volumeInfo?.title;
@@ -43,7 +68,7 @@ export function scoreReference(features, results, options = {}) {
 
   if (!results.anyMatch) {
     score += SCORE.NO_MATCH_PENALTY;
-    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Europe PMC, or Google Books' });
+    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Europe PMC, Semantic Scholar, arXiv, or book databases' });
   }
 
   if (features.year) {
@@ -65,7 +90,6 @@ export function scoreReference(features, results, options = {}) {
   }
 
   const finalScore = Math.max(0, Math.min(100, score));
-
   const label = finalScore >= SCORE.VALID_THRESHOLD ? 'valid' : 'warning';
 
   return { score: finalScore, label, reasons };

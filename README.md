@@ -32,6 +32,8 @@ Then open `http://localhost:8000`.
    | **CrossRef** (DOI lookup) | Definitive confirmation when a DOI is present |
    | **CrossRef** (bibliographic text search) | Matches full reference strings against CrossRef's 140M+ record index |
    | **Europe PMC** | Covers PubMed/MEDLINE plus many additional life-science sources |
+   | **Semantic Scholar** | Broad coverage of STEM and computer science literature |
+   | **arXiv** | Physics, maths, and CS preprints that often lack DOIs |
    | **Google Books** | Fallback for book-like citations (optional) |
    | **Open Library** | Additional book coverage, runs in parallel with Google Books (optional) |
 
@@ -42,8 +44,11 @@ Then open `http://localhost:8000`.
    | Evidence | Points |
    |----------|--------|
    | DOI verified in CrossRef | +75 |
+   | ISBN verified in Open Library | +70 |
    | Found via CrossRef text search | +75 |
    | Found in Europe PMC | +45 |
+   | Found in Semantic Scholar | +40 |
+   | Found in arXiv | +30 |
    | Found in Google Books / Open Library | +35 |
    | No match anywhere | −50 |
 
@@ -76,10 +81,7 @@ Then open `http://localhost:8000`.
 Future areas for future improvement:
 
 ### Verification
-- **Semantic Scholar** — broad coverage of computer science and STEM papers, good complement to CrossRef and Europe PMC
 - **CORE API** — indexes millions of open-access papers, useful for preprints and grey literature
-- **arXiv search** — direct lookup for physics, maths, and CS preprints which often lack DOIs
-- **ISBN verification** — dedicated lookup via Open Library or ISBNdb to properly validate book citations by ISBN rather than title search
 - **Retry / fallback logic** — silently retry failed API calls with exponential backoff before marking a reference unverified
 
 ### Matching quality
@@ -94,8 +96,5 @@ Future areas for future improvement:
 - **DOI resolution follow redirects** — some DOIs redirect to publisher pages; follow the chain to confirm the paper exists even if CrossRef's record is incomplete
 
 ### UX
-- **Export results** — download a CSV or annotated PDF of the validation results
 - **Per-reference manual override** — let the user mark a flagged reference as verified or dismiss a false positive
 - **Batch progress with cancellation** — show a per-reference progress indicator and allow cancelling a long-running analysis mid-way
-- **Dark mode** — respect `prefers-color-scheme: dark`
-- **Keyboard shortcuts** — submit on Ctrl+Enter, clear on Escape

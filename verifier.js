@@ -85,3 +85,54 @@ export async function searchOpenLibrary(query) {
     return null;
   }
 }
+
+/**
+ * Verify an ISBN against Open Library's ISBN endpoint.
+ * Returns true if the ISBN resolves to a known work.
+ */
+export async function verifyISBN(isbn) {
+  try {
+    const clean = isbn.replace(/[- ]/g, '');
+    const res = await fetch(`${API.OPEN_LIBRARY_BASE}/isbn/${clean}.json`);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Search Semantic Scholar. Returns the top result or null.
+ * Covers computer science, biomedical, and many STEM disciplines.
+ */
+export async function searchSemanticScholar(query) {
+  try {
+    const url = `${API.SEMANTIC_SCHOLAR}?query=${encodeURIComponent(query)}&fields=title,year,authors,externalIds&limit=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data?.[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Search arXiv using their Atom API. Returns { title, url } or null.
+ * Useful for physics, maths, and CS preprints that lack DOIs.
+ */
+export async function searchArXiv(query) {
+  try {
+    const url = `${API.ARXIV}?search_query=all:${encodeURIComponent(query)}&max_results=1&sortBy=relevance`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const text = await res.text();
+    const xml = new DOMParser().parseFromString(text, 'application/xml');
+    const entry = xml.querySelector('entry');
+    if (!entry) return null;
+    const title = entry.querySelector('title')?.textContent?.trim().replace(/\s+/g, ' ');
+    const id    = entry.querySelector('id')?.textContent?.trim();
+    return title ? { title, url: id } : null;
+  } catch {
+    return null;
+  }
+}
