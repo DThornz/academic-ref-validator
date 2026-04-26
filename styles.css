@@ -171,10 +171,33 @@ button.secondary:hover {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .summary-title {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+}
+
+.style-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8edf5;
+  color: var(--accent);
+  border: 1px solid #c5d3ea;
+}
+
+.style-badge.unknown {
+  background: #f0f0f0;
+  color: var(--text-secondary);
+  border-color: var(--border);
 }
 
 .summary-bar {

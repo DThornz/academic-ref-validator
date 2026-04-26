@@ -1,7 +1,7 @@
 /**
  * Render an array of scored results into the #results div.
  */
-export function renderResults(results) {
+export function renderResults(results, detectedStyle = null) {
   const container = document.getElementById('results');
   container.innerHTML = '';
 
@@ -10,7 +10,7 @@ export function renderResults(results) {
     return;
   }
 
-  const summary = buildSummary(results);
+  const summary = buildSummary(results, detectedStyle);
   container.appendChild(summary);
 
   results.forEach((res, idx) => {
@@ -36,7 +36,16 @@ export function renderResults(results) {
   });
 }
 
-function buildSummary(results) {
+const STYLE_LABELS = {
+  APA:       'APA 7th',
+  Vancouver: 'Vancouver / ICMJE',
+  IEEE:      'IEEE',
+  MLA:       'MLA 9th',
+  Chicago:   'Chicago 17th',
+  Harvard:   'Harvard',
+};
+
+function buildSummary(results, detectedStyle) {
   const counts = { valid: 0, warning: 0, invalid: 0 };
   results.forEach(r => { counts[r.label] = (counts[r.label] || 0) + 1; });
   const total = results.length;
@@ -60,10 +69,17 @@ function buildSummary(results) {
     </div>
   `).join('');
 
+  const styleLine = detectedStyle
+    ? `<span class="style-badge">${escapeHTML(STYLE_LABELS[detectedStyle] ?? detectedStyle)}</span>`
+    : '<span class="style-badge unknown">Style not recognised</span>';
+
   const summary = document.createElement('div');
   summary.className = 'summary-card';
   summary.innerHTML = `
-    <div class="summary-title">${total} reference${total === 1 ? '' : 's'} analyzed</div>
+    <div class="summary-header">
+      <span class="summary-title">${total} reference${total === 1 ? '' : 's'} analyzed</span>
+      ${styleLine}
+    </div>
     <div class="summary-bar">${segments}</div>
     <div class="summary-labels">${labels}</div>
   `;

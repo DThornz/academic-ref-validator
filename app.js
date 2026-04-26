@@ -1,4 +1,4 @@
-import { splitReferences, extractFeatures, buildQuery, buildCoreQuery } from './parser.js';
+import { splitReferences, extractFeatures, buildQuery, buildCoreQuery, detectStyle } from './parser.js';
 import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     analyzeBtn.disabled = true;
     resultsEl.innerHTML = '';
 
+    const detectedStyle = detectStyle(refs);
     const results = [];
     let completed = 0;
 
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
       results.push(...batchResults);
     }
 
-    renderResults(results);
+    renderResults(results, detectedStyle);
     clearStatus();
     analyzeBtn.disabled = false;
   });
