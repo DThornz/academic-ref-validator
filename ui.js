@@ -111,6 +111,16 @@ function buildCard(res) {
     ? `<a href="${escapeHTML(res.matchUrl)}" target="_blank" rel="noopener noreferrer" class="match-link">Verify source ↗</a>`
     : '';
 
+  const matchRecord = formatMatchCitation(res);
+  const matchRecordHtml = matchRecord ? `
+    <details class="matched-record">
+      <summary>View matched record</summary>
+      <div class="matched-citation">
+        <span class="matched-source">${escapeHTML(matchRecord.source)}</span>
+        <p class="matched-cite-text">${escapeHTML(matchRecord.cite)}</p>
+      </div>
+    </details>` : '';
+
   const overrideTarget  = res.label === 'valid' ? 'warning' : 'valid';
   const overrideBtnText = res.label === 'valid' ? 'Flag for Review' : 'Mark as Verified';
 
@@ -122,6 +132,7 @@ function buildCard(res) {
     <div class="reference-text">${escapeHTML(res.raw)}</div>
     <ul class="reasons-list">${reasonsHtml}</ul>
     ${verifyLink}
+    ${matchRecordHtml}
     <button class="override-btn" data-from="${res.label}" data-to="${overrideTarget}">${overrideBtnText}</button>
   `;
 
@@ -130,6 +141,71 @@ function buildCard(res) {
   });
 
   return card;
+}
+
+function formatMatchCitation(res) {
+  const hit = res.doiData || res.crossRefTextMatch;
+  if (hit && (hit.title || hit.author)) {
+    const authors = (hit.author || [])
+      .map(a => `${a.family || ''}${a.given ? ' ' + a.given[0] : ''}`)
+      .join(', ');
+    const year = hit.published?.['date-parts']?.[0]?.[0]
+              || hit['published-print']?.['date-parts']?.[0]?.[0]
+              || hit['published-online']?.['date-parts']?.[0]?.[0]
+              || '';
+    const title   = hit.title?.[0]             || '';
+    const journal = hit['container-title']?.[0] || '';
+    const vol     = hit.volume  ? `, ${hit.volume}`  : '';
+    const issue   = hit.issue   ? `(${hit.issue})`   : '';
+    const page    = hit.page    ? `, ${hit.page}`    : '';
+    const doi     = hit.DOI     ? ` https://doi.org/${hit.DOI}` : '';
+    const parts   = [
+      authors,
+      authors && year ? ` (${year}).` : year ? `(${year}).` : '',
+      title   ? ` ${title}.`   : '',
+      journal ? ` ${journal}${vol}${issue}${page}.` : '',
+      doi
+    ];
+    return { source: res.doiData ? 'CrossRef (DOI)' : 'CrossRef', cite: parts.join('').trim() };
+  }
+
+  if (res.europePMCMatch) {
+    const h       = res.europePMCMatch;
+    const authors = h.authorString || '';
+    const year    = h.pubYear   ? ` (${h.pubYear}).` : '';
+    const title   = h.title     ? ` ${h.title}.`     : '';
+    const journal = h.journalTitle || '';
+    const vol     = h.volume    ? `, ${h.volume}`    : '';
+    const page    = h.pageInfo  ? `, ${h.pageInfo}`  : '';
+    const id      = h.doi ? ` https://doi.org/${h.doi}` : (h.pmid ? ` PMID: ${h.pmid}` : '');
+    return { source: 'Europe PMC', cite: `${authors}${year}${title}${journal}${vol}${page}.${id}`.trim() };
+  }
+
+  if (res.ssMatch) {
+    const h       = res.ssMatch;
+    const authors = (h.authors || []).map(a => a.name).join(', ');
+    const year    = h.year  ? ` (${h.year}).` : '';
+    const title   = h.title ? ` ${h.title}.`  : '';
+    const doi     = h.externalIds?.DOI ? ` https://doi.org/${h.externalIds.DOI}` : '';
+    return { source: 'Semantic Scholar', cite: `${authors}${year}${title}${doi}`.trim() };
+  }
+
+  if (res.arxivMatch) {
+    const h = res.arxivMatch;
+    return { source: 'arXiv', cite: `${h.title ? h.title + '. ' : ''}arXiv preprint.${h.url ? ' ' + h.url : ''}`.trim() };
+  }
+
+  if (res.bookMatch) {
+    const info    = res.bookMatch.volumeInfo || {};
+    const authors = (info.authors || []).join(', ');
+    const year    = info.publishedDate ? ` (${info.publishedDate.slice(0, 4)}).` : '';
+    const title   = info.title     ? ` ${info.title}.`     : '';
+    const pub     = info.publisher ? ` ${info.publisher}.` : '';
+    const source  = res.bookMatch._openLibrary ? 'Open Library' : 'Google Books';
+    return { source, cite: `${authors}${year}${title}${pub}`.trim() };
+  }
+
+  return null;
 }
 
 function moveCard(card, fromLabel, toLabel) {

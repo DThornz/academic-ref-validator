@@ -164,7 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
             titleConfirmed
           }, { strict: strictMode.checked });
 
-          const result = { ...scored, raw: ref, matchUrl, origIdx };
+          const result = {
+            ...scored, raw: ref, matchUrl, origIdx,
+            doiData: doiRes.data || null,
+            crossRefTextMatch, europePMCMatch, ssMatch, arxivMatch, bookMatch
+          };
           results[origIdx] = result;
 
           // Render this card immediately — don't wait for the batch to finish.
