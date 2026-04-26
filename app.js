@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
               searchEuropePMC(coreQuery)
             ]);
 
-            if (crHit   && isBasicMatch(ref, crHit.title?.[0])) crossRefTextMatch = crHit;
-            if (epmcHit && isBasicMatch(ref, epmcHit.title))    europePMCMatch    = epmcHit;
+            if (crHit   && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
+            if (epmcHit && isBasicMatch(ref, epmcHit.title))          europePMCMatch    = epmcHit;
 
             // Google Books as last resort for book-like citations.
             if (!crossRefTextMatch && !europePMCMatch && useBooks.checked) {
@@ -109,9 +109,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Stricter match for CrossRef text search results.
+ * Requires ≥3 shared meaningful words AND year within 5 years of the reference.
+ */
+function isCrossRefMatch(refText, refYear, crHit) {
+  const title = crHit?.title?.[0];
+  if (!title) return false;
+  const STOPWORDS = new Set([
+    'about', 'after', 'also', 'based', 'been', 'from', 'have', 'into',
+    'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
+    'through', 'using', 'which', 'with'
+  ]);
+  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 4 && !STOPWORDS.has(w));
+  const refSet = new Set(words(refText));
+  const shared = words(title).filter(w => refSet.has(w));
+  if (shared.length < 3) return false;
+  const currentYear = new Date().getFullYear();
+  if (refYear && refYear >= 1900 && refYear <= currentYear) {
+    const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
+                || crHit?.['published-print']?.['date-parts']?.[0]?.[0]
+                || crHit?.['published-online']?.['date-parts']?.[0]?.[0];
+    if (crYear && Math.abs(refYear - crYear) > 5) return false;
+  }
+  return true;
+}
+
+/**
  * Require at least one meaningful word shared between the reference text and
- * the result title. Used for CrossRef and Europe PMC, which are precise enough
- * that one shared word confirms relevance.
+ * the result title. Used for Europe PMC.
  */
 function isBasicMatch(refText, resultTitle) {
   if (!resultTitle) return false;

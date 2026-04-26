@@ -182,6 +182,14 @@ button.secondary:hover {
   gap: 12px;
 }
 
+.ref-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: Menlo, Consolas, monospace;
+  flex-shrink: 0;
+}
+
 .score {
   font-weight: 700;
   font-size: 1.2em;

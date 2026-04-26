@@ -13,7 +13,7 @@ export function renderResults(results) {
   const summary = buildSummary(results);
   container.appendChild(summary);
 
-  results.forEach(res => {
+  results.forEach((res, idx) => {
     const card = document.createElement('div');
     card.className = `result-card ${res.label}`;
 
@@ -25,6 +25,7 @@ export function renderResults(results) {
 
     card.innerHTML = `
       <div class="result-header">
+        <span class="ref-num">[${idx + 1}]</span>
         <div class="score">Score: ${res.score}</div>
         <span class="label-badge">${res.label}</span>
       </div>
