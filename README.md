@@ -4,7 +4,7 @@ A client-side tool for checking the authenticity of academic citations. Paste a 
 
 ## Live demo
 
-`https://dthornz.github.io/reference-validator/`
+`https://dthornz.github.io/academic-ref-validator/`
 
 ## Run locally
 
