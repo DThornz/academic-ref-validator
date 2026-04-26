@@ -92,4 +92,3 @@ Future areas for future improvement:
 
 ### Parsing
 - **Better title extraction** — use a trained NER or heuristic model to isolate the title field more reliably across all citation styles, especially for Vancouver and IEEE where titles are not quoted
-- **Multi-line reference handling** — improve segmentation for copy-pasted PDFs where a single reference spans many lines with inconsistent indentation
