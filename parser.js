@@ -1,12 +1,34 @@
 /**
  * Split raw input text into individual reference strings.
- * Heuristics: blank lines, [n] markers, "n." markers, "(n)" markers.
+ * Handles blank-line separation and numbered markers ([n], n., (n)).
+ * After splitting, each chunk is normalised: internal line-breaks are
+ * collapsed into spaces and hyphenated line-breaks are rejoined, so
+ * references that wrap across many lines in copy-pasted PDFs become
+ * clean single-line strings before any further processing.
  */
 export function splitReferences(text) {
-  const chunks = text.split(/\n\s*\n|\n\s*\[\d+\]\s+|\n\s*\d+\.\s+|\n\s*\(\d+\)\s+/);
-  return chunks
-    .map(c => c.replace(/^\s*(\[\d+\]|\d+\.|\(\d+\))\s+/, '').trim())
+  const input = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Split on blank lines, or at any line boundary where the next line
+  // opens a numbered marker. Numbers are capped at 3 digits to avoid
+  // treating a year like "2021." at the start of a continuation line
+  // as a new reference marker.
+  const rawChunks = input.split(
+    /\n[ \t]*\n|\n(?=[ \t]*(?:\[\d{1,3}\]|\d{1,3}\.|\(\d{1,3}\))[ \t])/
+  );
+
+  return rawChunks
+    .map(normaliseChunk)
     .filter(c => c.length > 25);
+}
+
+function normaliseChunk(chunk) {
+  // Strip a leading numbered marker: "[1] ", "1. ", "(1) "
+  const noMarker = chunk.replace(/^[ \t]*(?:\[\d+\]|\d+\.|\(\d+\))[ \t]+/, '');
+  // Rejoin hyphenated line-breaks: "vascu-\n   lar" → "vascular"
+  const deHyphenated = noMarker.replace(/(\w)-[ \t]*\n[ \t]*(\w)/g, '$1$2');
+  // Collapse all remaining internal line-breaks into single spaces
+  return deHyphenated.replace(/[ \t]*\n[ \t]*/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**

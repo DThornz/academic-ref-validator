@@ -110,6 +110,11 @@ button.secondary:hover {
   background: #eef1f5;
 }
 
+button.secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .options-panel {
   background: var(--surface);
   padding: 12px 16px;
