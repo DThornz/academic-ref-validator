@@ -76,7 +76,6 @@ function buildCard(res) {
   card.innerHTML = `
     <div class="result-header">
       <span class="ref-num">[${res.origIdx + 1}]</span>
-      <div class="score">Score: ${res.score}</div>
       <span class="label-badge">${DISPLAY_LABELS[res.label] ?? res.label}</span>
     </div>
     <div class="reference-text">${escapeHTML(res.raw)}</div>

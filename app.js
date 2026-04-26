@@ -1,5 +1,5 @@
-import { splitReferences, extractFeatures, buildQuery, buildCoreQuery, buildCrossRefQuery, detectStyle } from './parser.js';
-import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks } from './verifier.js';
+import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extractBestSentence, detectStyle } from './parser.js';
+import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const batchResults = await Promise.all(
         batch.map(async (ref) => {
           const features    = extractFeatures(ref);
-          const coreQuery   = buildCoreQuery(ref, features);
           const crBaseQuery = buildCrossRefQuery(ref);
           const booksQuery  = buildQuery(ref);
 
@@ -63,10 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
               ? `${crBaseQuery} ${features.doi}`
               : crBaseQuery;
 
-            // Europe PMC free-text search requires every word to match, so strip
-            // 1-3 letter tokens (author initials + short abbreviations like "Van",
-            // "Dis", "ATS") that would otherwise kill recall.
-            const epmcQuery = coreQuery
+            // Europe PMC requires every word to match (AND logic). Build a
+            // title-focused query from the best sentence fragment, then strip
+            // short tokens (author initials, abbreviations like "ATS", "Van").
+            const titleSentence = extractBestSentence(ref);
+            const epmcBase = titleSentence
+              .replace(/[™®©℠]/g, '')
+              .replace(/https?:\/\/\S+/g, ' ')
+              .replace(/\bdoi:\s*\S+/gi, ' ')
+              .replace(/[,;&.]/g, ' ')
+              .replace(/\s+/g, ' ').trim();
+            const epmcQuery = (features.year ? `${epmcBase} ${features.year}` : epmcBase)
               .replace(/\b[A-Za-z]{1,3}\b/g, ' ')
               .replace(/\s+/g, ' ').trim();
 
@@ -78,11 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (crHit   && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
             if (epmcHit && isBasicMatch(ref, epmcHit.title))          europePMCMatch    = epmcHit;
 
-            // Google Books as last resort for book-like citations.
+            // Book sources as last resort for book-like citations.
             if (!crossRefTextMatch && !europePMCMatch && useBooks.checked) {
-              const hit = await searchBooks(booksQuery);
-              const title = hit?.volumeInfo?.title;
-              if (hit && isBasicMatch(ref, title)) bookMatch = hit;
+              const [gbHit, olHit] = await Promise.all([
+                searchBooks(booksQuery),
+                searchOpenLibrary(booksQuery)
+              ]);
+              const gbTitle = gbHit?.volumeInfo?.title;
+              if (gbHit && isBasicMatch(ref, gbTitle)) {
+                bookMatch = gbHit;
+              } else if (olHit && isBasicMatch(ref, olHit.title)) {
+                bookMatch = { _openLibrary: olHit, volumeInfo: { title: olHit.title, infoLink: olHit.url } };
+              }
             }
           }
 
@@ -149,7 +162,7 @@ function isCrossRefMatch(refText, refYear, crHit) {
     s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
      .filter(w => w.length > 3 && !STOPWORDS.has(w))
   )];
-  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
   const refSet = new Set(tokenize(normRef));
   const titleTokens = tokenize(title);
   if (titleTokens.length === 0) return false;
@@ -178,7 +191,7 @@ function isBasicMatch(refText, resultTitle) {
   ]);
   const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
     .filter(w => w.length > 4 && !STOPWORDS.has(w));
-  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
   const refSet = new Set(words(normRef));
   return words(resultTitle).some(w => refSet.has(w));
 }

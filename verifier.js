@@ -63,3 +63,25 @@ export async function searchBooks(query) {
     return null;
   }
 }
+
+/**
+ * Search Open Library. Returns { title, key } or null.
+ * Open Library covers a very broad range of published books.
+ */
+export async function searchOpenLibrary(query) {
+  try {
+    const url = `${API.OPEN_LIBRARY}?q=${encodeURIComponent(query)}&limit=1&fields=title,key,first_publish_year`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const doc = data.docs?.[0];
+    if (!doc) return null;
+    return {
+      title: doc.title,
+      year: doc.first_publish_year,
+      url: `https://openlibrary.org${doc.key}`
+    };
+  } catch {
+    return null;
+  }
+}

@@ -335,10 +335,6 @@ button.secondary:hover {
   flex-shrink: 0;
 }
 
-.score {
-  font-weight: 700;
-  font-size: 1.2em;
-}
 
 .label-badge {
   font-size: 12px;

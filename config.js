@@ -5,7 +5,8 @@ export const API = {
   CROSSREF:        `https://api.crossref.org/works/`,           // DOI lookup
   CROSSREF_SEARCH: `https://api.crossref.org/works?${MAILTO}`,  // bibliographic text search
   EUROPE_PMC:      'https://www.ebi.ac.uk/europepmc/webservices/rest/search',
-  GOOGLE_BOOKS:    'https://www.googleapis.com/books/v1/volumes'
+  GOOGLE_BOOKS:    'https://www.googleapis.com/books/v1/volumes',
+  OPEN_LIBRARY:    'https://openlibrary.org/search.json'
 };
 
 export const SCORE = {

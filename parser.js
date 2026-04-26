@@ -97,7 +97,7 @@ export function buildQuery(ref) {
  */
 export function buildCrossRefQuery(ref) {
   let q = ref
-    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2')  // rejoin hyphenated line breaks
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2')  // rejoin hyphenated line breaks
     .replace(/(\w)- ([a-z]\w{2,})/g, '$1$2') // also handle space-separated PDF splits
     .replace(/[™®©℠]/g, '')                   // strip trademark/copyright symbols
     .replace(/\n/g, ' ')
@@ -107,9 +107,29 @@ export function buildCrossRefQuery(ref) {
   return q.slice(0, 220);
 }
 
+/**
+ * Extract the most title-like sentence fragment from a reference.
+ * Splits on ". " boundaries and returns the longest segment that contains
+ * at least 8 lowercase letters — a good proxy for an article/book title.
+ */
+export function extractBestSentence(ref) {
+  const normalized = ref
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2')
+    .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const segments = normalized.split(/\.\s+/);
+  let best = '';
+  for (const seg of segments) {
+    const lcCount = (seg.match(/[a-z]/g) || []).length;
+    if (lcCount >= 8 && seg.length > best.length) best = seg;
+  }
+  return best || normalized;
+}
+
 export function buildCoreQuery(ref, features) {
   let q = ref
-    .replace(/(\w)-\s*\n\s*(\w)/g, '$1$2') // rejoin hyphenated line breaks
+    .replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2') // rejoin hyphenated line breaks
     .replace(/(\w)- ([a-z]\w{2,})/g, '$1$2') // space-separated PDF splits
     .replace(/[™®©℠]/g, '')
     .replace(/\n/g, ' ')
