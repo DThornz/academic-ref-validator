@@ -24,16 +24,16 @@ Then open `http://localhost:8000`.
 
 1. **Segmentation** — splits pasted text into individual references, handling numbered lists, bracket markers, and blank-line-separated formats.
 2. **Feature extraction** — detects DOIs, ISBNs, publication years, and quoted title fragments.
-3. **Verification** — each reference is checked against three sources:
+3. **Verification** — each reference is checked against multiple sources:
 
    | Source | Used for |
    |--------|----------|
    | **CrossRef** (DOI lookup) | Definitive confirmation when a DOI is present |
    | **CrossRef** (bibliographic text search) | Matches full reference strings against CrossRef's 140M+ record index |
-   | **PubMed** | Authoritative for biomedical and life-science journals |
+   | **Europe PMC** | Covers PubMed/MEDLINE plus many additional life-science sources |
    | **Google Books** | Fallback for book-like citations (optional) |
 
-   CrossRef text search and PubMed run in parallel for speed.
+   CrossRef text search and Europe PMC run in parallel for speed. CrossRef requests use the polite pool for better rate limits.
 
 4. **Scoring** — a 0–100 score is computed from the evidence:
 
@@ -41,7 +41,7 @@ Then open `http://localhost:8000`.
    |----------|--------|
    | DOI verified in CrossRef | +75 |
    | Found via CrossRef text search | +50 |
-   | Found in PubMed | +45 |
+   | Found in Europe PMC | +45 |
    | Found in Google Books | +35 |
    | No match anywhere | −50 |
 

@@ -23,12 +23,12 @@ export function scoreReference(features, results, options = {}) {
     });
   }
 
-  if (results.pubmedMatch) {
-    score += SCORE.PUBMED_MATCH;
-    const title = results.pubmedMatch.title;
+  if (results.europePMCMatch) {
+    score += SCORE.EUROPE_PMC_MATCH;
+    const title = results.europePMCMatch.title;
     reasons.push({
       kind: 'positive',
-      text: title ? `Found in PubMed: "${truncate(title, 120)}"` : 'Found in PubMed'
+      text: title ? `Found in Europe PMC: "${truncate(title, 120)}"` : 'Found in Europe PMC'
     });
   }
 
@@ -43,7 +43,7 @@ export function scoreReference(features, results, options = {}) {
 
   if (!results.anyMatch) {
     score += SCORE.NO_MATCH_PENALTY;
-    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, PubMed, or Google Books' });
+    reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Europe PMC, or Google Books' });
   }
 
   if (features.year) {

@@ -1,5 +1,5 @@
 import { splitReferences, extractFeatures, buildQuery, buildCoreQuery } from './parser.js';
-import { verifyDOI, searchCrossRefText, searchPubMed, searchBooks } from './verifier.js';
+import { verifyDOI, searchCrossRefText, searchEuropePMC, searchBooks } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { renderResults, setStatus, clearStatus } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
@@ -38,14 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const batch = refs.slice(i, i + CONCURRENCY_LIMIT);
       const batchResults = await Promise.all(
         batch.map(async (ref) => {
-          const features = extractFeatures(ref);
-          const coreQuery = buildCoreQuery(ref, features);
-          const booksQuery = buildQuery(ref);
+          const features    = extractFeatures(ref);
+          const coreQuery   = buildCoreQuery(ref, features);
+          const booksQuery  = buildQuery(ref);
 
-          let doiVerified = false;
+          let doiVerified      = false;
           let crossRefTextMatch = null;
-          let pubmedMatch = null;
-          let bookMatch = null;
+          let europePMCMatch   = null;
+          let bookMatch        = null;
 
           if (features.doi) {
             const doiRes = await verifyDOI(features.doi);
@@ -53,31 +53,37 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (!doiVerified) {
-            // CrossRef bibliographic search and PubMed run in parallel.
-            const [crHit, pubHit] = await Promise.all([
-              searchCrossRefText(coreQuery),
-              searchPubMed(coreQuery)
+            // CrossRef text search and Europe PMC run in parallel.
+            // If a DOI was detected but lookup failed (transient error), also try
+            // CrossRef text search with the DOI itself as a fallback query.
+            const crQuery = features.doi
+              ? `${coreQuery} ${features.doi}`
+              : coreQuery;
+
+            const [crHit, epmcHit] = await Promise.all([
+              searchCrossRefText(crQuery),
+              searchEuropePMC(coreQuery)
             ]);
 
-            if (crHit && isBasicMatch(ref, crHit.title?.[0])) crossRefTextMatch = crHit;
-            if (pubHit && isBasicMatch(ref, pubHit.title))    pubmedMatch = pubHit;
+            if (crHit   && isBasicMatch(ref, crHit.title?.[0])) crossRefTextMatch = crHit;
+            if (epmcHit && isBasicMatch(ref, epmcHit.title))    europePMCMatch    = epmcHit;
 
             // Google Books as last resort for book-like citations.
-            if (!crossRefTextMatch && !pubmedMatch && useBooks.checked) {
+            if (!crossRefTextMatch && !europePMCMatch && useBooks.checked) {
               const hit = await searchBooks(booksQuery);
               const title = hit?.volumeInfo?.title;
               if (hit && isBasicMatch(ref, title)) bookMatch = hit;
             }
           }
 
-          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, pubmedMatch, bookMatch);
+          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch);
 
           const scored = scoreReference(features, {
             doiVerified,
             crossRefTextMatch,
-            pubmedMatch,
+            europePMCMatch,
             bookMatch,
-            anyMatch: Boolean(doiVerified || crossRefTextMatch || pubmedMatch || bookMatch),
+            anyMatch: Boolean(doiVerified || crossRefTextMatch || europePMCMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
@@ -104,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Require at least one meaningful word shared between the reference text and
- * the result title. Used for CrossRef text search and PubMed, which are precise
- * enough that one shared word is sufficient to confirm relevance.
+ * the result title. Used for CrossRef and Europe PMC, which are precise enough
+ * that one shared word confirms relevance.
  */
 function isBasicMatch(refText, resultTitle) {
   if (!resultTitle) return false;
@@ -124,12 +130,12 @@ function isBasicMatch(refText, resultTitle) {
  * Loose substring match between extracted title (if any) and a result's title.
  * Used only in strict mode.
  */
-function checkTitleMatch(features, crossRefTextMatch, pubmedMatch, bookMatch) {
+function checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch) {
   if (!features.title) return false;
   const target = features.title.toLowerCase();
   const candidates = [
     crossRefTextMatch?.title?.[0],
-    pubmedMatch?.title,
+    europePMCMatch?.title,
     bookMatch?.volumeInfo?.title
   ].filter(Boolean).map(s => s.toLowerCase());
   return candidates.some(t => t.includes(target) || target.includes(t));
