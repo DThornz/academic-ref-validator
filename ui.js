@@ -9,26 +9,66 @@ const STYLE_LABELS = {
   Harvard:   'Harvard',
 };
 
-export function renderResults(results, detectedStyle = null) {
+export function initResults(total, detectedStyle) {
   const container = document.getElementById('results');
   container.innerHTML = '';
-
-  if (results.length === 0) {
-    container.innerHTML = '<p>No references found or analyzed.</p>';
-    return;
-  }
-
-  container.appendChild(buildSummary(results, detectedStyle));
-
-  const indexed = results.map((r, i) => ({ ...r, origIdx: i }));
-  const validItems  = indexed.filter(r => r.label === 'valid');
-  const reviewItems = indexed.filter(r => r.label !== 'valid');
+  container.appendChild(buildLiveSummary(total, detectedStyle));
 
   const columns = document.createElement('div');
   columns.className = 'results-columns';
-  columns.appendChild(buildColumn('valid',   'Valid',        validItems));
-  columns.appendChild(buildColumn('warning', 'Needs Review', reviewItems));
+  columns.appendChild(buildColumn('valid',   'Valid',        []));
+  columns.appendChild(buildColumn('warning', 'Needs Review', []));
   container.appendChild(columns);
+}
+
+export function addResult(result) {
+  const col = document.getElementById(`col-${result.label}`);
+  if (!col) return;
+  const cards = col.querySelector('.column-cards');
+  const emptyMsg = cards.querySelector('.column-empty');
+  if (emptyMsg) emptyMsg.remove();
+  cards.appendChild(buildCard(result));
+  updateColumnCounts();
+  updateSummary();
+}
+
+export function finalizeResults(completed, total, wasCancelled) {
+  const titleEl = document.querySelector('.summary-title');
+  if (!titleEl) return;
+  const noun = completed === 1 ? 'reference' : 'references';
+  if (wasCancelled) {
+    titleEl.textContent = `${completed} of ${total} ${noun} analyzed (cancelled)`;
+  } else {
+    titleEl.textContent = `${completed} ${noun} analyzed`;
+  }
+}
+
+function buildLiveSummary(total, detectedStyle) {
+  const styleLine = detectedStyle
+    ? `<span class="style-badge">${escapeHTML(STYLE_LABELS[detectedStyle] ?? detectedStyle)}</span>`
+    : '<span class="style-badge unknown">Style not recognised</span>';
+
+  const labels = [
+    { key: 'valid',   name: 'Valid',        count: 0 },
+    { key: 'warning', name: 'Needs Review', count: 0 },
+  ].map(s => `
+    <div class="summary-label ${s.key}">
+      <span class="label-count">${s.count}</span>
+      <span class="label-name">${s.name}</span>
+    </div>
+  `).join('');
+
+  const summary = document.createElement('div');
+  summary.className = 'summary-card';
+  summary.innerHTML = `
+    <div class="summary-header">
+      <span class="summary-title">Analyzing ${total} ${total === 1 ? 'reference' : 'references'}…</span>
+      ${styleLine}
+    </div>
+    <div class="summary-bar"></div>
+    <div class="summary-labels">${labels}</div>
+  `;
+  return summary;
 }
 
 function buildColumn(cls, title, items) {

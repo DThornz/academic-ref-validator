@@ -1,13 +1,13 @@
 import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extractBestSentence, detectStyle } from './parser.js';
 import { verifyDOI, verifyISBN, searchCrossRefText, searchEuropePMC, searchSemanticScholar, searchArXiv, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
-import { renderResults, setStatus, clearStatus, exportCSV, exportPDF } from './ui.js';
+import { initResults, addResult, finalizeResults, setStatus, clearStatus, exportCSV, exportPDF } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const analyzeBtn  = document.getElementById('analyzeBtn');
-  const cancelBtn   = document.getElementById('cancelBtn');
-  const clearBtn    = document.getElementById('clearBtn');
+  const analyzeBtn   = document.getElementById('analyzeBtn');
+  const cancelBtn    = document.getElementById('cancelBtn');
+  const clearBtn     = document.getElementById('clearBtn');
   const exportBtn    = document.getElementById('exportBtn');
   const exportPdfBtn = document.getElementById('exportPdfBtn');
   const inputText    = document.getElementById('inputText');
@@ -17,14 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const progressBar  = document.getElementById('progressBar');
   const progressFill = document.getElementById('progressFill');
 
-  let controller       = null;
-  let lastResults      = [];
+  let controller        = null;
+  let lastResults       = [];
   let lastDetectedStyle = null;
 
   exportBtn.addEventListener('click',    () => exportCSV(lastResults));
   exportPdfBtn.addEventListener('click', () => exportPDF(lastResults, lastDetectedStyle));
 
-  // Keyboard shortcuts: Ctrl/Cmd+Enter to analyze, Escape to clear.
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') clearBtn.click();
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !analyzeBtn.disabled) analyzeBtn.click();
@@ -36,10 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   analyzeBtn.addEventListener('click', async () => {
     const text = inputText.value.trim();
-    if (!text) {
-      setStatus('Please paste at least one reference.');
-      return;
-    }
+    if (!text) { setStatus('Please paste at least one reference.'); return; }
 
     const refs = splitReferences(text);
     if (refs.length === 0) {
@@ -53,23 +49,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     analyzeBtn.disabled = true;
     exportBtn.disabled  = true;
+    exportPdfBtn.disabled = true;
     cancelBtn.hidden    = false;
     progressBar.hidden  = false;
     progressFill.style.width = '0%';
-    resultsEl.innerHTML = '';
 
     const detectedStyle = detectStyle(refs);
-    const results = [];
+
+    // Pre-allocate by index so export order matches input order regardless of
+    // which promises resolve first within a batch.
+    const results = new Array(refs.length);
     let completed = 0;
 
     setStatus(`Analyzing 0 / ${refs.length}…`, true);
+    initResults(refs.length, detectedStyle);
 
     for (let i = 0; i < refs.length; i += CONCURRENCY_LIMIT) {
       if (signal.aborted) break;
 
       const batch = refs.slice(i, i + CONCURRENCY_LIMIT);
-      const batchResults = await Promise.all(
-        batch.map(async (ref) => {
+
+      await Promise.all(
+        batch.map(async (ref, batchIdx) => {
+          const origIdx = i + batchIdx;
+
           const features    = extractFeatures(ref);
           const crBaseQuery = buildCrossRefQuery(ref);
           const booksQuery  = buildQuery(ref);
@@ -155,45 +158,44 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           const scored = scoreReference(features, {
-            doiVerified,
-            doiViaRedirect,
-            isbnVerified,
-            crossRefTextMatch,
-            europePMCMatch,
-            ssMatch,
-            arxivMatch,
-            bookMatch,
+            doiVerified, doiViaRedirect, isbnVerified,
+            crossRefTextMatch, europePMCMatch, ssMatch, arxivMatch, bookMatch,
             anyMatch: Boolean(doiVerified || isbnVerified || crossRefTextMatch || europePMCMatch || ssMatch || arxivMatch || bookMatch),
             titleConfirmed
           }, { strict: strictMode.checked });
 
-          completed += 1;
+          const result = { ...scored, raw: ref, matchUrl, origIdx };
+          results[origIdx] = result;
+
+          // Render this card immediately — don't wait for the batch to finish.
+          addResult(result);
+
+          completed++;
           setStatus(`Analyzing ${completed} / ${refs.length}…`, true);
           progressFill.style.width = `${(completed / refs.length) * 100}%`;
-
-          return { ...scored, raw: ref, matchUrl };
         })
       );
-      results.push(...batchResults);
     }
 
-    const wasCancelled = signal.aborted;
+    const wasCancelled    = signal.aborted;
+    const completedResults = results.filter(Boolean);
 
-    cancelBtn.hidden   = true;
-    progressBar.hidden = true;
-    analyzeBtn.disabled = false;
-    controller = null;
+    cancelBtn.hidden      = true;
+    progressBar.hidden    = true;
+    analyzeBtn.disabled   = false;
+    controller            = null;
 
-    if (results.length > 0) {
-      lastResults       = results;
+    if (completedResults.length > 0) {
+      lastResults       = completedResults;
       lastDetectedStyle = detectedStyle;
-      renderResults(results, detectedStyle);
       exportBtn.disabled    = false;
       exportPdfBtn.disabled = false;
     }
 
+    finalizeResults(completedResults.length, refs.length, wasCancelled);
+
     if (wasCancelled) {
-      setStatus(`Cancelled — showing ${results.length} of ${refs.length} references analyzed.`);
+      setStatus(`Cancelled — ${completedResults.length} of ${refs.length} references analyzed.`);
     } else {
       clearStatus();
     }
