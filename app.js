@@ -1,25 +1,28 @@
 import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extractBestSentence, detectStyle } from './parser.js';
 import { verifyDOI, verifyISBN, searchCrossRefText, searchEuropePMC, searchSemanticScholar, searchArXiv, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
-import { renderResults, setStatus, clearStatus, exportCSV } from './ui.js';
+import { renderResults, setStatus, clearStatus, exportCSV, exportPDF } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const analyzeBtn  = document.getElementById('analyzeBtn');
   const cancelBtn   = document.getElementById('cancelBtn');
   const clearBtn    = document.getElementById('clearBtn');
-  const exportBtn   = document.getElementById('exportBtn');
-  const inputText   = document.getElementById('inputText');
-  const useBooks    = document.getElementById('useBooks');
-  const strictMode  = document.getElementById('strictMode');
-  const resultsEl   = document.getElementById('results');
+  const exportBtn    = document.getElementById('exportBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+  const inputText    = document.getElementById('inputText');
+  const useBooks     = document.getElementById('useBooks');
+  const strictMode   = document.getElementById('strictMode');
+  const resultsEl    = document.getElementById('results');
   const progressBar  = document.getElementById('progressBar');
   const progressFill = document.getElementById('progressFill');
 
-  let controller  = null;
-  let lastResults = [];
+  let controller       = null;
+  let lastResults      = [];
+  let lastDetectedStyle = null;
 
-  exportBtn.addEventListener('click', () => exportCSV(lastResults));
+  exportBtn.addEventListener('click',    () => exportCSV(lastResults));
+  exportPdfBtn.addEventListener('click', () => exportPDF(lastResults, lastDetectedStyle));
 
   // Keyboard shortcuts: Ctrl/Cmd+Enter to analyze, Escape to clear.
   document.addEventListener('keydown', e => {
@@ -72,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const booksQuery  = buildQuery(ref);
 
           let doiVerified      = false;
+          let doiViaRedirect   = false;
           let isbnVerified     = false;
           let crossRefTextMatch = null;
           let europePMCMatch   = null;
@@ -83,8 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
             features.doi  ? verifyDOI(features.doi, signal)   : Promise.resolve({ ok: false }),
             features.isbn ? verifyISBN(features.isbn, signal) : Promise.resolve(false)
           ]);
-          doiVerified  = doiRes.ok;
-          isbnVerified = isbnOk;
+          doiVerified    = doiRes.ok;
+          doiViaRedirect = doiRes.viaRedirect || false;
+          isbnVerified   = isbnOk;
 
           if (!doiVerified) {
             const crQuery = features.doi
@@ -151,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const scored = scoreReference(features, {
             doiVerified,
+            doiViaRedirect,
             isbnVerified,
             crossRefTextMatch,
             europePMCMatch,
@@ -179,9 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
     controller = null;
 
     if (results.length > 0) {
-      lastResults = results;
+      lastResults       = results;
+      lastDetectedStyle = detectedStyle;
       renderResults(results, detectedStyle);
-      exportBtn.disabled = false;
+      exportBtn.disabled    = false;
+      exportPdfBtn.disabled = false;
     }
 
     if (wasCancelled) {
@@ -195,8 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (controller) controller.abort();
     inputText.value = '';
     resultsEl.innerHTML = '';
-    exportBtn.disabled = true;
-    lastResults = [];
+    exportBtn.disabled    = true;
+    exportPdfBtn.disabled = true;
+    lastResults       = [];
+    lastDetectedStyle = null;
     clearStatus();
   });
 });

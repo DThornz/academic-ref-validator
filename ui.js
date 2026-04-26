@@ -193,6 +193,88 @@ function buildSummary(results, detectedStyle) {
   return summary;
 }
 
+export function exportPDF(results, detectedStyle) {
+  if (!results || results.length === 0) return;
+
+  const validCount  = results.filter(r => r.label === 'valid').length;
+  const reviewCount = results.length - validCount;
+  const styleLabel  = detectedStyle ? (STYLE_LABELS[detectedStyle] ?? detectedStyle) : null;
+
+  const refsHtml = results.map((r, i) => {
+    const reasonsHtml = r.reasons.map(reason => {
+      const kind = typeof reason === 'string' ? 'neutral' : (reason.kind || 'neutral');
+      const text = typeof reason === 'string' ? reason : reason.text;
+      return `<li class="${kind}">${escapeHTML(text)}</li>`;
+    }).join('');
+
+    const matchLink = r.matchUrl
+      ? `<p class="match-url">Source: <a href="${escapeHTML(r.matchUrl)}">${escapeHTML(r.matchUrl)}</a></p>`
+      : '';
+
+    return `
+      <div class="ref-entry ${r.label}">
+        <div class="ref-header">
+          <span class="ref-num">[${i + 1}]</span>
+          <span class="ref-label ${r.label}">${r.label === 'valid' ? 'Valid' : 'Needs Review'}</span>
+        </div>
+        <p class="ref-text">${escapeHTML(r.raw.replace(/\n/g, ' '))}</p>
+        <ul class="reasons">${reasonsHtml}</ul>
+        ${matchLink}
+      </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reference Validation Report</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #1a1a1a; margin: 40px; line-height: 1.5; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
+  .summary { background: #f5f7fa; border: 1px solid #d0d5dd; padding: 12px 16px; border-radius: 6px; margin-bottom: 24px; font-size: 13px; }
+  .summary strong { font-size: 16px; }
+  .valid-count  { color: #2e7d32; }
+  .review-count { color: #b45309; }
+  .ref-entry { border-left: 4px solid #ccc; padding: 10px 14px; margin-bottom: 14px; page-break-inside: avoid; }
+  .ref-entry.valid   { border-left-color: #2e7d32; }
+  .ref-entry.warning { border-left-color: #f9a825; }
+  .ref-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .ref-num { font-family: monospace; font-size: 12px; color: #666; }
+  .ref-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 999px; color: white; }
+  .ref-label.valid   { background: #2e7d32; }
+  .ref-label.warning { background: #f9a825; color: #333; }
+  .ref-text { font-family: Menlo, Consolas, monospace; font-size: 11px; background: #f0f2f5; padding: 6px 8px; border-radius: 3px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
+  .reasons { list-style: none; padding: 0; margin: 4px 0; }
+  .reasons li { padding: 2px 0; font-size: 12px; color: #444; }
+  .reasons li.positive::before { content: "✓  "; color: #2e7d32; font-weight: bold; }
+  .reasons li.negative::before { content: "✗  "; color: #c62828; font-weight: bold; }
+  .reasons li.neutral::before  { content: "•  "; color: #666; }
+  .match-url { font-size: 11px; margin-top: 4px; }
+  .match-url a { color: #2e6edf; }
+  @media print { body { margin: 20px; } }
+</style>
+</head>
+<body>
+  <h1>Reference Validation Report</h1>
+  <p class="meta">Generated ${new Date().toLocaleString()}${styleLabel ? ` &nbsp;·&nbsp; Style: <strong>${escapeHTML(styleLabel)}</strong>` : ''}</p>
+  <div class="summary">
+    <strong>${results.length}</strong> reference${results.length === 1 ? '' : 's'} analyzed &nbsp;·&nbsp;
+    <strong class="valid-count">${validCount}</strong> valid &nbsp;·&nbsp;
+    <strong class="review-count">${reviewCount}</strong> need${reviewCount === 1 ? 's' : ''} review
+  </div>
+  ${refsHtml}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=800,height=700');
+  if (!win) { alert('Allow pop-ups to export PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.addEventListener('load', () => win.print());
+}
+
 export function exportCSV(results) {
   if (!results || results.length === 0) return;
   const header = ['#', 'Label', 'Match URL', 'Reference', 'Reasons'];

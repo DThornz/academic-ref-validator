@@ -9,9 +9,11 @@ export function scoreReference(features, results, options = {}) {
 
   if (results.doiVerified) {
     score += SCORE.DOI_VERIFIED;
-    reasons.push({ kind: 'positive', text: 'DOI verified in CrossRef' });
+    reasons.push({ kind: 'positive', text: results.doiViaRedirect
+      ? 'DOI resolves via publisher redirect (not in CrossRef)'
+      : 'DOI verified in CrossRef' });
   } else if (features.doi) {
-    reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef` });
+    reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef or via redirect` });
   }
 
   if (results.isbnVerified) {

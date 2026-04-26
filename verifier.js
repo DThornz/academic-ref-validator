@@ -1,15 +1,24 @@
 import { API } from './config.js';
 
 export async function verifyDOI(doi, signal) {
+  // Primary: CrossRef API — most authoritative
   try {
     const res = await fetch(`${API.CROSSREF}${encodeURIComponent(doi)}`, { signal });
-    if (!res.ok) return { ok: false };
-    const data = await res.json();
-    if (data.status !== 'ok') return { ok: false };
-    return { ok: true, data: data.message };
-  } catch {
-    return { ok: false };
-  }
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'ok') return { ok: true, data: data.message };
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: follow the DOI redirect. doi.org resolves DOIs that CrossRef's
+  // record may be incomplete for. redirect:'manual' gives us the 302 without
+  // chasing the publisher URL, avoiding CORS issues with the destination.
+  try {
+    const res = await fetch(`https://doi.org/${doi}`, { redirect: 'manual', signal });
+    if (res.type === 'opaqueredirect') return { ok: true, viaRedirect: true };
+  } catch { /* network error or CORS block */ }
+
+  return { ok: false };
 }
 
 export async function searchCrossRefText(query, signal) {
