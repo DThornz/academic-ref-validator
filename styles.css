@@ -162,6 +162,61 @@ button.secondary:hover {
   flex-direction: column;
 }
 
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.summary-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.summary-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.bar-segment { height: 100%; }
+.bar-segment.valid   { background: var(--valid); }
+.bar-segment.warning { background: var(--warning); }
+.bar-segment.invalid { background: var(--invalid); }
+
+.summary-labels {
+  display: flex;
+  gap: 28px;
+  margin-top: 14px;
+}
+
+.summary-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.label-count {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.label-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.summary-label.valid   .label-count { color: var(--valid); }
+.summary-label.warning .label-count { color: var(--warning); }
+.summary-label.invalid .label-count { color: var(--invalid); }
+
 .result-card {
   background: var(--surface);
   border-left: 6px solid #888;

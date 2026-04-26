@@ -39,19 +39,33 @@ export function renderResults(results) {
 function buildSummary(results) {
   const counts = { valid: 0, warning: 0, invalid: 0 };
   results.forEach(r => { counts[r.label] = (counts[r.label] || 0) + 1; });
+  const total = results.length;
+
+  const segments = [
+    { key: 'valid',   count: counts.valid   },
+    { key: 'warning', count: counts.warning },
+    { key: 'invalid', count: counts.invalid },
+  ].filter(s => s.count > 0)
+   .map(s => `<div class="bar-segment ${s.key}" style="flex:${s.count}"></div>`)
+   .join('');
+
+  const labels = [
+    { key: 'valid',   name: 'Valid',             count: counts.valid   },
+    { key: 'warning', name: 'Needs review',      count: counts.warning },
+    { key: 'invalid', name: 'Likely fabricated', count: counts.invalid },
+  ].map(s => `
+    <div class="summary-label ${s.key}">
+      <span class="label-count">${s.count}</span>
+      <span class="label-name">${s.name}</span>
+    </div>
+  `).join('');
 
   const summary = document.createElement('div');
-  summary.className = 'result-card';
-  summary.style.borderLeftColor = '#2e6edf';
+  summary.className = 'summary-card';
   summary.innerHTML = `
-    <div class="result-header">
-      <div class="score">${results.length} reference${results.length === 1 ? '' : 's'} analyzed</div>
-    </div>
-    <ul class="reasons-list">
-      <li class="positive">Likely valid: ${counts.valid}</li>
-      <li class="neutral">Needs review: ${counts.warning}</li>
-      <li class="negative">Likely fabricated: ${counts.invalid}</li>
-    </ul>
+    <div class="summary-title">${total} reference${total === 1 ? '' : 's'} analyzed</div>
+    <div class="summary-bar">${segments}</div>
+    <div class="summary-labels">${labels}</div>
   `;
   return summary;
 }
