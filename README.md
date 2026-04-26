@@ -1,4 +1,4 @@
-# reference-validator
+# Academic Reference Validator
 
 A client-side tool for checking the authenticity of academic citations. Paste a reference list and each entry is verified against multiple academic databases. Returns a legitimacy classification with transparent, per-reason explanations and colour-coded results. Pure HTML/CSS/JS — no frameworks, no server, no API keys required.
 
