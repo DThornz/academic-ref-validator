@@ -392,9 +392,45 @@ footer {
   color: var(--text-secondary);
 }
 
-.export-btn {
-  margin-top: 16px;
-  align-self: flex-start;
+.kbd-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.override-btn {
+  display: block;
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.override-btn:hover {
+  background: var(--bg);
+  color: var(--text);
 }
 
 @media (prefers-color-scheme: dark) {

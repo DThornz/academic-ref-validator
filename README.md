@@ -96,5 +96,4 @@ Future areas for future improvement:
 - **DOI resolution follow redirects** — some DOIs redirect to publisher pages; follow the chain to confirm the paper exists even if CrossRef's record is incomplete
 
 ### UX
-- **Per-reference manual override** — let the user mark a flagged reference as verified or dismiss a false positive
-- **Batch progress with cancellation** — show a per-reference progress indicator and allow cancelling a long-running analysis mid-way
+- **Export to annotated PDF** — richer export format beyond CSV

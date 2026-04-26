@@ -1,21 +1,34 @@
 import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extractBestSentence, detectStyle } from './parser.js';
 import { verifyDOI, verifyISBN, searchCrossRefText, searchEuropePMC, searchSemanticScholar, searchArXiv, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
-import { renderResults, setStatus, clearStatus } from './ui.js';
+import { renderResults, setStatus, clearStatus, exportCSV } from './ui.js';
 import { CONCURRENCY_LIMIT } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const analyzeBtn = document.getElementById('analyzeBtn');
-  const clearBtn   = document.getElementById('clearBtn');
-  const inputText  = document.getElementById('inputText');
-  const useBooks   = document.getElementById('useBooks');
-  const strictMode = document.getElementById('strictMode');
-  const resultsEl  = document.getElementById('results');
+  const analyzeBtn  = document.getElementById('analyzeBtn');
+  const cancelBtn   = document.getElementById('cancelBtn');
+  const clearBtn    = document.getElementById('clearBtn');
+  const exportBtn   = document.getElementById('exportBtn');
+  const inputText   = document.getElementById('inputText');
+  const useBooks    = document.getElementById('useBooks');
+  const strictMode  = document.getElementById('strictMode');
+  const resultsEl   = document.getElementById('results');
+  const progressBar  = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+
+  let controller  = null;
+  let lastResults = [];
+
+  exportBtn.addEventListener('click', () => exportCSV(lastResults));
 
   // Keyboard shortcuts: Ctrl/Cmd+Enter to analyze, Escape to clear.
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') clearBtn.click();
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !analyzeBtn.disabled) analyzeBtn.click();
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    if (controller) controller.abort();
   });
 
   analyzeBtn.addEventListener('click', async () => {
@@ -32,7 +45,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    controller = new AbortController();
+    const { signal } = controller;
+
     analyzeBtn.disabled = true;
+    exportBtn.disabled  = true;
+    cancelBtn.hidden    = false;
+    progressBar.hidden  = false;
+    progressFill.style.width = '0%';
     resultsEl.innerHTML = '';
 
     const detectedStyle = detectStyle(refs);
@@ -42,6 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setStatus(`Analyzing 0 / ${refs.length}…`, true);
 
     for (let i = 0; i < refs.length; i += CONCURRENCY_LIMIT) {
+      if (signal.aborted) break;
+
       const batch = refs.slice(i, i + CONCURRENCY_LIMIT);
       const batchResults = await Promise.all(
         batch.map(async (ref) => {
@@ -57,10 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
           let arxivMatch       = null;
           let bookMatch        = null;
 
-          // DOI and ISBN verification run in parallel.
           const [doiRes, isbnOk] = await Promise.all([
-            features.doi  ? verifyDOI(features.doi)   : Promise.resolve({ ok: false }),
-            features.isbn ? verifyISBN(features.isbn) : Promise.resolve(false)
+            features.doi  ? verifyDOI(features.doi, signal)   : Promise.resolve({ ok: false }),
+            features.isbn ? verifyISBN(features.isbn, signal) : Promise.resolve(false)
           ]);
           doiVerified  = doiRes.ok;
           isbnVerified = isbnOk;
@@ -70,9 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
               ? `${crBaseQuery} ${features.doi}`
               : crBaseQuery;
 
-            // Europe PMC, Semantic Scholar, and arXiv all benefit from a
-            // title-focused query: extract the best sentence fragment, strip
-            // short tokens (initials, abbreviations).
             const titleSentence = extractBestSentence(ref);
             const titleBase = titleSentence
               .replace(/[™®©℠]/g, '')
@@ -84,12 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
               .replace(/\b[A-Za-z]{1,3}\b/g, ' ')
               .replace(/\s+/g, ' ').trim();
 
-            // All four text-search APIs run in parallel.
             const [crHit, epmcHit, ssHit, arxivHit] = await Promise.all([
-              searchCrossRefText(crQuery),
-              searchEuropePMC(titleQuery),
-              searchSemanticScholar(crQuery),
-              searchArXiv(titleQuery)
+              searchCrossRefText(crQuery, signal),
+              searchEuropePMC(titleQuery, signal),
+              searchSemanticScholar(crQuery, signal),
+              searchArXiv(titleQuery, signal)
             ]);
 
             if (crHit    && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
@@ -97,11 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ssHit    && isBasicMatch(ref, ssHit.title))             ssMatch           = ssHit;
             if (arxivHit && isBasicMatch(ref, arxivHit.title))          arxivMatch        = arxivHit;
 
-            // Book databases as last resort for book-like citations.
             if (!crossRefTextMatch && !europePMCMatch && !ssMatch && !arxivMatch && useBooks.checked) {
               const [gbHit, olHit] = await Promise.all([
-                searchBooks(booksQuery),
-                searchOpenLibrary(booksQuery)
+                searchBooks(booksQuery, signal),
+                searchOpenLibrary(booksQuery, signal)
               ]);
               const gbTitle = gbHit?.volumeInfo?.title;
               if (gbHit && isBasicMatch(ref, gbTitle)) {
@@ -114,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
 
-          // Best URL for the user to inspect the matched source.
           let matchUrl = null;
           if (doiVerified) {
             matchUrl = `https://doi.org/${features.doi}`;
@@ -148,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           completed += 1;
           setStatus(`Analyzing ${completed} / ${refs.length}…`, true);
+          progressFill.style.width = `${(completed / refs.length) * 100}%`;
 
           return { ...scored, raw: ref, matchUrl };
         })
@@ -155,23 +171,36 @@ document.addEventListener('DOMContentLoaded', () => {
       results.push(...batchResults);
     }
 
-    renderResults(results, detectedStyle);
-    clearStatus();
+    const wasCancelled = signal.aborted;
+
+    cancelBtn.hidden   = true;
+    progressBar.hidden = true;
     analyzeBtn.disabled = false;
+    controller = null;
+
+    if (results.length > 0) {
+      lastResults = results;
+      renderResults(results, detectedStyle);
+      exportBtn.disabled = false;
+    }
+
+    if (wasCancelled) {
+      setStatus(`Cancelled — showing ${results.length} of ${refs.length} references analyzed.`);
+    } else {
+      clearStatus();
+    }
   });
 
   clearBtn.addEventListener('click', () => {
+    if (controller) controller.abort();
     inputText.value = '';
     resultsEl.innerHTML = '';
+    exportBtn.disabled = true;
+    lastResults = [];
     clearStatus();
   });
 });
 
-/**
- * Strict match for CrossRef text search results.
- * Requires ≥85% of the CrossRef title's meaningful words to appear in the
- * reference text (near-full title coverage), plus year within 5 years.
- */
 function isCrossRefMatch(refText, refYear, crHit) {
   const title = crHit?.title?.[0];
   if (!title) return false;
@@ -199,10 +228,6 @@ function isCrossRefMatch(refText, refYear, crHit) {
   return true;
 }
 
-/**
- * Require at least one meaningful word (>4 chars) shared between the reference
- * text and a result title. Used for Europe PMC, Semantic Scholar, and arXiv.
- */
 function isBasicMatch(refText, resultTitle) {
   if (!resultTitle) return false;
   const STOPWORDS = new Set([
@@ -217,10 +242,6 @@ function isBasicMatch(refText, resultTitle) {
   return words(resultTitle).some(w => refSet.has(w));
 }
 
-/**
- * Loose substring match between extracted title (if any) and any result title.
- * Used only in strict mode.
- */
 function checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch) {
   if (!features.title) return false;
   const target = features.title.toLowerCase();

@@ -24,14 +24,20 @@
 
         <div class="controls">
           <button id="analyzeBtn" class="primary">Analyze References</button>
+          <button id="cancelBtn" class="secondary" hidden>Cancel</button>
           <button id="clearBtn" class="secondary">Clear</button>
+          <button id="exportBtn" class="secondary" disabled>Export CSV</button>
+        </div>
+        <p class="kbd-hint">Ctrl+Enter to analyze &nbsp;·&nbsp; Esc to clear</p>
+        <div id="progressBar" class="progress-bar" hidden>
+          <div id="progressFill" class="progress-fill"></div>
         </div>
       </section>
 
       <section class="options-panel">
         <label class="option">
           <input type="checkbox" id="useBooks" checked>
-          Search Google Books for book-like citations (fallback)
+          Search Google Books &amp; Open Library for book-like citations (fallback)
         </label>
         <label class="option">
           <input type="checkbox" id="strictMode">

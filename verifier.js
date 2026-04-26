@@ -1,11 +1,8 @@
 import { API } from './config.js';
 
-/**
- * Verify a DOI against CrossRef. Returns { ok, data } or { ok: false }.
- */
-export async function verifyDOI(doi) {
+export async function verifyDOI(doi, signal) {
   try {
-    const res = await fetch(`${API.CROSSREF}${encodeURIComponent(doi)}`);
+    const res = await fetch(`${API.CROSSREF}${encodeURIComponent(doi)}`, { signal });
     if (!res.ok) return { ok: false };
     const data = await res.json();
     if (data.status !== 'ok') return { ok: false };
@@ -15,15 +12,10 @@ export async function verifyDOI(doi) {
   }
 }
 
-/**
- * CrossRef bibliographic text search — designed for matching full reference strings.
- * Returns the top result or null.
- * Uses the polite pool (mailto in base URL) for better rate limits.
- */
-export async function searchCrossRefText(query) {
+export async function searchCrossRefText(query, signal) {
   try {
     const url = `${API.CROSSREF_SEARCH}&query.bibliographic=${encodeURIComponent(query)}&rows=1&select=DOI,title,author,score,published`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     if (data.status !== 'ok') return null;
@@ -33,14 +25,10 @@ export async function searchCrossRefText(query) {
   }
 }
 
-/**
- * Search Europe PMC — covers PubMed/MEDLINE plus many additional life-science sources.
- * Returns the top result or null.
- */
-export async function searchEuropePMC(query) {
+export async function searchEuropePMC(query, signal) {
   try {
     const url = `${API.EUROPE_PMC}?query=${encodeURIComponent(query)}&format=json&pageSize=3&resultType=lite&sort=relevance`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     return data.resultList?.result?.[0] || null;
@@ -49,13 +37,10 @@ export async function searchEuropePMC(query) {
   }
 }
 
-/**
- * Search Google Books. Returns first volume or null.
- */
-export async function searchBooks(query) {
+export async function searchBooks(query, signal) {
   try {
     const url = `${API.GOOGLE_BOOKS}?q=${encodeURIComponent(query)}&maxResults=1`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     return data.items?.[0] || null;
@@ -64,14 +49,10 @@ export async function searchBooks(query) {
   }
 }
 
-/**
- * Search Open Library. Returns { title, key } or null.
- * Open Library covers a very broad range of published books.
- */
-export async function searchOpenLibrary(query) {
+export async function searchOpenLibrary(query, signal) {
   try {
     const url = `${API.OPEN_LIBRARY}?q=${encodeURIComponent(query)}&limit=1&fields=title,key,first_publish_year`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     const doc = data.docs?.[0];
@@ -86,28 +67,20 @@ export async function searchOpenLibrary(query) {
   }
 }
 
-/**
- * Verify an ISBN against Open Library's ISBN endpoint.
- * Returns true if the ISBN resolves to a known work.
- */
-export async function verifyISBN(isbn) {
+export async function verifyISBN(isbn, signal) {
   try {
     const clean = isbn.replace(/[- ]/g, '');
-    const res = await fetch(`${API.OPEN_LIBRARY_BASE}/isbn/${clean}.json`);
+    const res = await fetch(`${API.OPEN_LIBRARY_BASE}/isbn/${clean}.json`, { signal });
     return res.ok;
   } catch {
     return false;
   }
 }
 
-/**
- * Search Semantic Scholar. Returns the top result or null.
- * Covers computer science, biomedical, and many STEM disciplines.
- */
-export async function searchSemanticScholar(query) {
+export async function searchSemanticScholar(query, signal) {
   try {
     const url = `${API.SEMANTIC_SCHOLAR}?query=${encodeURIComponent(query)}&fields=title,year,authors,externalIds&limit=1`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     return data.data?.[0] || null;
@@ -116,14 +89,10 @@ export async function searchSemanticScholar(query) {
   }
 }
 
-/**
- * Search arXiv using their Atom API. Returns { title, url } or null.
- * Useful for physics, maths, and CS preprints that lack DOIs.
- */
-export async function searchArXiv(query) {
+export async function searchArXiv(query, signal) {
   try {
     const url = `${API.ARXIV}?search_query=all:${encodeURIComponent(query)}&max_results=1&sortBy=relevance`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const text = await res.text();
     const xml = new DOMParser().parseFromString(text, 'application/xml');
