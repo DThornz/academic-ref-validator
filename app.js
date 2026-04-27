@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputText    = document.getElementById('inputText');
   const useBooks     = document.getElementById('useBooks');
   const strictMode   = document.getElementById('strictMode');
+  const fuzzyMode    = document.getElementById('fuzzyMode');
   const resultsEl    = document.getElementById('results');
   const progressBar  = document.getElementById('progressBar');
   const progressFill = document.getElementById('progressFill');
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     progressFill.style.width = '0%';
 
     const detectedStyle = detectStyle(refs);
+    const fuzzy         = fuzzyMode.checked;
 
     // Pre-allocate by index so export order matches input order regardless of
     // which promises resolve first within a batch.
@@ -117,10 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
               searchArXiv(titleQuery, signal)
             ]);
 
-            if (crHit    && isCrossRefMatch(ref, features, crHit))      crossRefTextMatch = crHit;
-            if (epmcHit  && isBasicMatch(ref, epmcHit.title))           europePMCMatch    = epmcHit;
-            if (ssHit    && isBasicMatch(ref, ssHit.title))             ssMatch           = ssHit;
-            if (arxivHit && isBasicMatch(ref, arxivHit.title))          arxivMatch        = arxivHit;
+            if (crHit    && isCrossRefMatch(ref, features, crHit, fuzzy)) crossRefTextMatch = crHit;
+            if (epmcHit  && isBasicMatch(ref, epmcHit.title,  fuzzy))   europePMCMatch    = epmcHit;
+            if (ssHit    && isBasicMatch(ref, ssHit.title,    fuzzy))   ssMatch           = ssHit;
+            if (arxivHit && isBasicMatch(ref, arxivHit.title, fuzzy))   arxivMatch        = arxivHit;
 
             if (!crossRefTextMatch && !europePMCMatch && !ssMatch && !arxivMatch && useBooks.checked) {
               const [gbHit, olHit] = await Promise.all([
@@ -128,9 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchOpenLibrary(booksQuery, signal)
               ]);
               const gbTitle = gbHit?.volumeInfo?.title;
-              if (gbHit && isBasicMatch(ref, gbTitle)) {
+              if (gbHit && isBasicMatch(ref, gbTitle,       fuzzy)) {
                 bookMatch = gbHit;
-              } else if (olHit && isBasicMatch(ref, olHit.title)) {
+              } else if (olHit && isBasicMatch(ref, olHit.title, fuzzy)) {
                 bookMatch = { _openLibrary: olHit, volumeInfo: { title: olHit.title, infoLink: olHit.url } };
               }
             }
@@ -219,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function isCrossRefMatch(refText, features, crHit) {
+function isCrossRefMatch(refText, features, crHit, fuzzy = false) {
   const title = crHit?.title?.[0];
   if (!title) return false;
   const STOPWORDS = new Set([
@@ -227,15 +229,22 @@ function isCrossRefMatch(refText, features, crHit) {
     'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
     'through', 'using', 'which', 'with'
   ]);
+  const prep = s => {
+    let t = s.toLowerCase();
+    if (fuzzy) t = normalizeDiacritics(t);
+    return t.replace(/[^a-z0-9\s]/g, ' ');
+  };
   const tokenize = s => [...new Set(
-    s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-     .filter(w => w.length > 3 && !STOPWORDS.has(w))
+    prep(s).split(/\s+/).filter(w => w.length > 3 && !STOPWORDS.has(w))
   )];
-  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
-  const refSet = new Set(tokenize(normRef));
+  const normRef    = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const refTokens  = tokenize(normRef);
+  const refSet     = new Set(refTokens);
   const titleTokens = tokenize(title);
   if (titleTokens.length === 0) return false;
-  const matched = titleTokens.filter(w => refSet.has(w));
+  const matched = fuzzy
+    ? titleTokens.filter(tw => refSet.has(tw) || refTokens.some(rw => fuzzyWordMatch(tw, rw)))
+    : titleTokens.filter(w => refSet.has(w));
   if (matched.length / titleTokens.length < 0.85) return false;
   const refYear = features.year;
   if (refYear && refYear >= 1900) {
@@ -244,11 +253,9 @@ function isCrossRefMatch(refText, features, crHit) {
                 || crHit?.['published-online']?.['date-parts']?.[0]?.[0];
     if (crYear && Math.abs(refYear - crYear) > 5) return false;
   }
-  // Volume cross-check: if both ref and CrossRef have a volume, they must agree
   if (features.volume && crHit.volume) {
     if (String(crHit.volume).trim() !== features.volume) return false;
   }
-  // Page cross-check: if both have a first page, they must agree
   if (features.firstPage && crHit.page) {
     const crFirst = String(crHit.page).split(/[-–]/)[0].trim();
     if (crFirst !== features.firstPage) return false;
@@ -301,18 +308,55 @@ function computeVolumePageConfirmed(features, crHit) {
   return false;
 }
 
-function isBasicMatch(refText, resultTitle) {
+function isBasicMatch(refText, resultTitle, fuzzy = false) {
   if (!resultTitle) return false;
   const STOPWORDS = new Set([
     'about', 'after', 'also', 'based', 'been', 'from', 'have', 'into',
     'model', 'paper', 'study', 'that', 'their', 'there', 'these', 'this',
     'through', 'using', 'which', 'with'
   ]);
-  const words = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 4 && !STOPWORDS.has(w));
-  const normRef = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
-  const refSet = new Set(words(normRef));
-  return words(resultTitle).some(w => refSet.has(w));
+  const prep = s => {
+    let t = s.toLowerCase();
+    if (fuzzy) t = normalizeDiacritics(t);
+    return t.replace(/[^a-z0-9\s]/g, ' ');
+  };
+  const words    = s => prep(s).split(/\s+/).filter(w => w.length > 4 && !STOPWORDS.has(w));
+  const normRef  = refText.replace(/(\w)-\s*\n\s*(\w)/g, '$1-$2').replace(/(\w)- ([a-z]\w{2,})/g, '$1$2');
+  const refWords = words(normRef);
+  const refSet   = new Set(refWords);
+  const titleWords = words(resultTitle);
+  if (fuzzy) {
+    return titleWords.some(tw => refSet.has(tw) || refWords.some(rw => fuzzyWordMatch(tw, rw)));
+  }
+  return titleWords.some(w => refSet.has(w));
+}
+
+function normalizeDiacritics(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 4) return Math.max(m, n);
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const curr = [i];
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+    }
+    prev = curr;
+  }
+  return prev[n];
+}
+
+function fuzzyWordMatch(a, b) {
+  if (a === b) return true;
+  const len = Math.max(a.length, b.length);
+  if (len < 5) return false;
+  const threshold = len <= 8 ? 1 : len <= 13 ? 2 : 3;
+  return levenshtein(a, b) <= threshold;
 }
 
 function checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch) {
