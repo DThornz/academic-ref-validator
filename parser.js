@@ -47,12 +47,25 @@ export function extractFeatures(ref) {
     title = (quoted[1] || quoted[2]).trim();
   }
 
+  // Volume: prefer explicit keyword, then Vancouver ;vol( style, then vol(issue) pattern
+  const volExplicit  = ref.match(/\bvol(?:ume)?\.?\s*(\d+)/i);
+  const volVancouver = ref.match(/;\s*(\d{1,4})\s*[(:]/);
+  const volAPA       = ref.match(/(?<!\d)(\d{1,3})\s*\(\s*\d+\s*\)/);
+  const volume       = volExplicit?.[1] ?? volVancouver?.[1] ?? volAPA?.[1] ?? null;
+
+  // First page: pp. N–M, then :N–M (Vancouver / general)
+  const pagePP    = ref.match(/\bpp?\.?\s*(\d{1,6})\s*[-–]/i);
+  const pageColon = ref.match(/:\s*(\d{1,6})\s*[-–]/);
+  const firstPage = pagePP?.[1] ?? pageColon?.[1] ?? null;
+
   return {
     raw: ref,
     doi: doiMatch ? doiMatch[0].replace(/[).,;]+$/, '') : null,
     year: yearMatch ? parseInt(yearMatch[1], 10) : null,
     isbn: isbnMatch ? isbnMatch[0] : null,
     title,
+    volume,
+    firstPage,
     text: ref.toLowerCase()
   };
 }
@@ -111,6 +124,99 @@ export function buildQuery(ref) {
   return q;
 }
 
+// ─── Journal abbreviation expansion ─────────────────────────────────────────
+
+// Full abbreviated journal names → full names.
+// Sorted longest-first at build time so longer patterns are matched before
+// any shorter substring they contain (e.g. "Nat Genet" before "Nat").
+const _JOURNAL_FULL = new Map([
+  ['Proc Natl Acad Sci USA', 'Proceedings of the National Academy of Sciences USA'],
+  ['Am J Respir Crit Care Med', 'American Journal of Respiratory and Critical Care Medicine'],
+  ['J Cereb Blood Flow Metab', 'Journal of Cerebral Blood Flow and Metabolism'],
+  ['J Am Coll Cardiol', 'Journal of the American College of Cardiology'],
+  ['Proc Natl Acad Sci', 'Proceedings of the National Academy of Sciences'],
+  ['J Natl Cancer Inst', 'Journal of the National Cancer Institute'],
+  ['Mol Cell Biol', 'Molecular and Cellular Biology'],
+  ['Am J Hum Genet', 'American Journal of Human Genetics'],
+  ['Am J Psychiatry', 'American Journal of Psychiatry'],
+  ['Am J Pathol', 'American Journal of Pathology'],
+  ['Am J Physiol', 'American Journal of Physiology'],
+  ['Am J Clin Nutr', 'American Journal of Clinical Nutrition'],
+  ['Clin Cancer Res', 'Clinical Cancer Research'],
+  ['Ann Intern Med', 'Annals of Internal Medicine'],
+  ['Hum Mol Genet', 'Human Molecular Genetics'],
+  ['J Heart Valve Dis', 'Journal of Heart Valve Disease'],
+  ['Int J Cancer', 'International Journal of Cancer'],
+  ['Eur Heart J', 'European Heart Journal'],
+  ['Nat Cell Biol', 'Nature Cell Biology'],
+  ['J Clin Invest', 'Journal of Clinical Investigation'],
+  ['J Clin Oncol', 'Journal of Clinical Oncology'],
+  ['J Exp Med', 'Journal of Experimental Medicine'],
+  ['J Biol Chem', 'Journal of Biological Chemistry'],
+  ['J Neurotrauma', 'Journal of Neurotrauma'],
+  ['J Neurosurg', 'Journal of Neurosurgery'],
+  ['N Engl J Med', 'New England Journal of Medicine'],
+  ['Front Neurosci', 'Frontiers in Neuroscience'],
+  ['Front Immunol', 'Frontiers in Immunology'],
+  ['Cancer Res', 'Cancer Research'],
+  ['Brain Res', 'Brain Research'],
+  ['Br J Cancer', 'British Journal of Cancer'],
+  ['Cell Stem Cell', 'Cell Stem Cell'],
+  ['Curr Biol', 'Current Biology'],
+  ['Nat Genet', 'Nature Genetics'],
+  ['PLoS Biol', 'PLOS Biology'],
+  ['PLoS Genet', 'PLOS Genetics'],
+  ['PLoS Med', 'PLOS Medicine'],
+  ['Mol Cell', 'Molecular Cell'],
+  ['Nat Med', 'Nature Medicine'],
+  ['NEJM', 'New England Journal of Medicine'],
+  ['JAMA', 'Journal of the American Medical Association'],
+  ['PNAS', 'Proceedings of the National Academy of Sciences'],
+  ['BMJ', 'British Medical Journal'],
+]);
+
+const _JOURNAL_PATTERNS = [..._JOURNAL_FULL.entries()]
+  .sort((a, b) => b[0].length - a[0].length)
+  .map(([abbr, full]) => [
+    new RegExp(`\\b${abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'),
+    full
+  ]);
+
+// Word-level expansions applied to any token ending with a period,
+// e.g. "Dis." → "Disease", "Clin." → "Clinical"
+const _WORD_ABBREVS = new Map([
+  ['am', 'American'], ['int', 'International'], ['eur', 'European'],
+  ['br', 'British'], ['brit', 'British'], ['clin', 'Clinical'],
+  ['med', 'Medical'], ['sci', 'Sciences'], ['biol', 'Biology'],
+  ['biochem', 'Biochemistry'], ['physiol', 'Physiology'],
+  ['pharmacol', 'Pharmacology'], ['pathol', 'Pathology'], ['surg', 'Surgery'],
+  ['pediatr', 'Pediatrics'], ['paediatr', 'Paediatrics'], ['radiol', 'Radiology'],
+  ['neurol', 'Neurology'], ['neurosci', 'Neuroscience'], ['oncol', 'Oncology'],
+  ['cardiol', 'Cardiology'], ['immunol', 'Immunology'], ['mol', 'Molecular'],
+  ['genet', 'Genetics'], ['exp', 'Experimental'], ['rev', 'Reviews'],
+  ['ann', 'Annals'], ['proc', 'Proceedings'], ['natl', 'National'],
+  ['assoc', 'Association'], ['res', 'Research'], ['lett', 'Letters'],
+  ['commun', 'Communications'], ['dis', 'Disease'], ['disord', 'Disorders'],
+  ['toxicol', 'Toxicology'], ['microbiol', 'Microbiology'],
+  ['epidemiol', 'Epidemiology'], ['gastroenterol', 'Gastroenterology'],
+  ['hepatol', 'Hepatology'], ['hematol', 'Hematology'],
+  ['dermatol', 'Dermatology'], ['ophthalmol', 'Ophthalmology'],
+  ['respir', 'Respiratory'], ['nutr', 'Nutrition'], ['environ', 'Environmental'],
+  ['biophys', 'Biophysics'], ['biomater', 'Biomaterials'],
+]);
+
+function expandJournalAbbreviations(text) {
+  let t = text;
+  for (const [pattern, full] of _JOURNAL_PATTERNS) t = t.replace(pattern, full);
+  // Expand dotted abbreviations: "Dis." → "Disease", "Clin." → "Clinical"
+  t = t.replace(/\b([A-Za-z]{2,})\.(?=[\s,;]|$)/g, (m, word) =>
+    _WORD_ABBREVS.get(word.toLowerCase()) || m
+  );
+  return t;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Light query for CrossRef bibliographic text search.
  * CrossRef's query.bibliographic field is designed for full formatted reference
@@ -126,6 +232,7 @@ export function buildCrossRefQuery(ref) {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\bdoi:\s*\S+/gi, ' ')
     .replace(/\s+/g, ' ').trim();
+  q = expandJournalAbbreviations(q);
   return q.slice(0, 220);
 }
 

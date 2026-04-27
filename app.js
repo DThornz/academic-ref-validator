@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
               searchArXiv(titleQuery, signal)
             ]);
 
-            if (crHit    && isCrossRefMatch(ref, features.year, crHit)) crossRefTextMatch = crHit;
+            if (crHit    && isCrossRefMatch(ref, features, crHit))      crossRefTextMatch = crHit;
             if (epmcHit  && isBasicMatch(ref, epmcHit.title))           europePMCMatch    = epmcHit;
             if (ssHit    && isBasicMatch(ref, ssHit.title))             ssMatch           = ssHit;
             if (arxivHit && isBasicMatch(ref, arxivHit.title))          arxivMatch        = arxivHit;
@@ -136,7 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
 
-          const titleConfirmed = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
+          const titleConfirmed      = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
+          const authorMatch         = doiVerified ? null : checkAuthorMatch(ref, crossRefTextMatch, europePMCMatch, ssMatch);
+          const volumePageConfirmed = crossRefTextMatch ? computeVolumePageConfirmed(features, crossRefTextMatch) : false;
 
           let matchUrl = null;
           if (doiVerified) {
@@ -161,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doiVerified, doiViaRedirect, isbnVerified,
             crossRefTextMatch, europePMCMatch, ssMatch, arxivMatch, bookMatch,
             anyMatch: Boolean(doiVerified || isbnVerified || crossRefTextMatch || europePMCMatch || ssMatch || arxivMatch || bookMatch),
-            titleConfirmed
+            titleConfirmed, authorMatch, volumePageConfirmed
           }, { strict: strictMode.checked });
 
           const result = {
@@ -217,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-function isCrossRefMatch(refText, refYear, crHit) {
+function isCrossRefMatch(refText, features, crHit) {
   const title = crHit?.title?.[0];
   if (!title) return false;
   const STOPWORDS = new Set([
@@ -235,13 +237,68 @@ function isCrossRefMatch(refText, refYear, crHit) {
   if (titleTokens.length === 0) return false;
   const matched = titleTokens.filter(w => refSet.has(w));
   if (matched.length / titleTokens.length < 0.85) return false;
+  const refYear = features.year;
   if (refYear && refYear >= 1900) {
     const crYear = crHit?.published?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-print']?.['date-parts']?.[0]?.[0]
                 || crHit?.['published-online']?.['date-parts']?.[0]?.[0];
     if (crYear && Math.abs(refYear - crYear) > 5) return false;
   }
+  // Volume cross-check: if both ref and CrossRef have a volume, they must agree
+  if (features.volume && crHit.volume) {
+    if (String(crHit.volume).trim() !== features.volume) return false;
+  }
+  // Page cross-check: if both have a first page, they must agree
+  if (features.firstPage && crHit.page) {
+    const crFirst = String(crHit.page).split(/[-–]/)[0].trim();
+    if (crFirst !== features.firstPage) return false;
+  }
   return true;
+}
+
+function checkAuthorMatch(refText, crMatch, epmcMatch, ssMatch) {
+  const lastNames = new Set();
+
+  if (crMatch?.author) {
+    for (const a of crMatch.author) {
+      if (a.family && a.family.length >= 4) lastNames.add(a.family.toLowerCase());
+    }
+  }
+  if (epmcMatch?.authorString) {
+    for (const part of epmcMatch.authorString.split(/,\s*/)) {
+      const word = part.trim().split(/\s+/)[0].replace(/\.$/, '');
+      if (word.length >= 4) lastNames.add(word.toLowerCase());
+    }
+  }
+  if (ssMatch?.authors) {
+    for (const a of ssMatch.authors) {
+      if (!a.name) continue;
+      const parts = a.name.trim().split(/[\s,]+/);
+      for (const p of parts) {
+        if (p.length >= 4) lastNames.add(p.toLowerCase());
+      }
+    }
+  }
+
+  if (lastNames.size === 0) return null;
+
+  const refLower = refText.toLowerCase();
+  return [...lastNames].some(name => {
+    const idx = refLower.indexOf(name);
+    if (idx === -1) return false;
+    const before = idx === 0 ? ' ' : refLower[idx - 1];
+    const after  = refLower[idx + name.length] ?? ' ';
+    return /[^a-z]/.test(before) && /[^a-z]/.test(after);
+  });
+}
+
+function computeVolumePageConfirmed(features, crHit) {
+  if (features.volume && crHit.volume && String(crHit.volume).trim() === features.volume) return true;
+  if (features.firstPage && crHit.page) {
+    const crFirst = String(crHit.page).split(/[-–]/)[0].trim();
+    if (crFirst === features.firstPage) return true;
+  }
+  return false;
 }
 
 function isBasicMatch(refText, resultTitle) {

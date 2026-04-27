@@ -68,6 +68,19 @@ export function scoreReference(features, results, options = {}) {
     });
   }
 
+  if (results.anyMatch) {
+    if (results.authorMatch === false) {
+      score -= 10;
+      reasons.push({ kind: 'negative', text: 'No author name from the matched record found in this reference' });
+    } else if (results.authorMatch === true) {
+      reasons.push({ kind: 'positive', text: 'Author name confirmed in matched record' });
+    }
+    if (results.volumePageConfirmed) {
+      score += 5;
+      reasons.push({ kind: 'positive', text: 'Volume/page numbers confirmed in CrossRef' });
+    }
+  }
+
   if (!results.anyMatch) {
     score += SCORE.NO_MATCH_PENALTY;
     reasons.push({ kind: 'negative', text: 'No matches in CrossRef, Europe PMC, Semantic Scholar, arXiv, or book databases' });

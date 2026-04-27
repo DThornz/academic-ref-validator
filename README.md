@@ -86,9 +86,6 @@ Future areas for future improvement:
 
 ### Matching quality
 - **Fuzzy title matching** — replace exact token overlap with edit-distance or n-gram similarity to handle OCR errors, diacritics, and subtle transcription differences
-- **Author cross-check** — verify that the last name of at least one author in the reference appears in the matched record, to reduce false positives
-- **Journal name normalisation** — map abbreviated journal names (e.g. *J. Heart Valve Dis.*) to their full forms before querying, improving recall for niche journals
-- **Volume / page cross-check** — when a match is found, confirm that the volume or page numbers align with what CrossRef returns
 
 ### Parsing
 - **Better title extraction** — use a trained NER or heuristic model to isolate the title field more reliably across all citation styles, especially for Vancouver and IEEE where titles are not quoted
