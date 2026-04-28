@@ -1,0 +1,10 @@
+1.	Banana, A., & Pancake, B. (2099). CFD simulation of ketchup flow in zero-gravity arteries. Journal of Extremely Questionable Biofluids, 42(13), 999–1001. DOI: 10.0000/fake-doi-12345 
+2.	Unicorn, C., Dragon, D., & Phoenix, F. (1802). Navier–Stokes equations solved using magic in vascular networks. Transactions of Mythical Biomedical Engineering, 1(0), 1–∞. 
+3.	Smith, J., & Smith, J. (2025). A study study of duplicated duplicate duplication in CFD CFD models. Journal of Redundant Research, 7(7), 77–77. 
+4.	Doe, J. (No Year). Untitled paper about stuff. Unknown Journal, volume?, pages?? DOI: not-a-doi 
+5.	Robot, X-12, & AI, GPT-9000. (3021). Fully conscious CFD simulations of self-aware blood cells. Future Journal of Sentient Fluids, 88(8), 888–888. 
+6.	Null, N., Void, V., & Undefined, U. (NaN). Division by zero in arterial flow modeling. Journal of Impossible Mathematics in Medicine, -1(-1), -∞–∞. 
+7.	Potato, P., Tomato, T., & Carrot, C. (2020). Vegetable-based turbulence modeling in salad dressing hemodynamics. International Journal of Edible CFD, 5(2), 123–lettuce. 
+8.	Lorem, I., Ipsum, D., & Dolor, S. (2010). Lorem ipsum dolor sit amet in biofluid mechanics. Placeholder Science Journal, 0(0), 0–0. 
+9.	Schrödinger, E., & Cat, C. (1935/2025). Simultaneously converged and diverged CFD solutions in quantum capillaries. Journal of Paradoxical Engineering, 2(2), 50%–50%. 
+10.	Test, T., Example, E., & Sample, S. (2024). This is a fake reference used for testing citation parsers. Journal of Definitely Not Real Papers, 123(456), 789–101112. DOI: 10.fake/this-is-not-real
