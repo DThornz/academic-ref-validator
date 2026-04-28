@@ -151,6 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
 
+          const doiTitleMismatch    = doiVerified && !doiViaRedirect && doiRes.data
+            ? !isCrossRefMatch(ref, features, doiRes.data, fuzzy)
+            : false;
           const titleConfirmed      = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
           const authorMatch         = doiVerified ? null : checkAuthorMatch(ref, crossRefTextMatch, europePMCMatch, ssMatch);
           const volumePageConfirmed = crossRefTextMatch ? computeVolumePageConfirmed(features, crossRefTextMatch) : false;
@@ -175,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           const scored = scoreReference(features, {
-            doiVerified, doiViaRedirect, isbnVerified,
+            doiVerified, doiViaRedirect, doiTitleMismatch, isbnVerified,
             crossRefTextMatch, europePMCMatch, ssMatch, arxivMatch, bookMatch,
             anyMatch: Boolean(doiVerified || isbnVerified || crossRefTextMatch || europePMCMatch || ssMatch || arxivMatch || bookMatch),
             titleConfirmed, authorMatch, volumePageConfirmed
