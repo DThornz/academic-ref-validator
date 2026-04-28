@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
           doiViaRedirect = doiRes.viaRedirect || false;
           isbnVerified   = isbnOk;
 
-          if (!doiVerified) {
+          if (!doiVerified || doiViaRedirect) {
             const crQuery = features.doi
               ? `${crBaseQuery} ${features.doi}`
               : crBaseQuery;
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? !isCrossRefMatch(ref, features, doiRes.data, fuzzy)
             : false;
           const titleConfirmed      = checkTitleMatch(features, crossRefTextMatch, europePMCMatch, bookMatch, ssMatch, arxivMatch);
-          const authorMatch         = doiVerified ? null : checkAuthorMatch(ref, crossRefTextMatch, europePMCMatch, ssMatch);
+          const authorMatch         = (doiVerified && !doiViaRedirect) ? null : checkAuthorMatch(ref, crossRefTextMatch, europePMCMatch, ssMatch);
           const volumePageConfirmed = crossRefTextMatch ? computeVolumePageConfirmed(features, crossRefTextMatch) : false;
 
           let matchUrl = null;
