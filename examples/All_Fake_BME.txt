@@ -1,0 +1,11 @@
+1.	Smith, J. A., & Patel, R. (2022). CFD modeling of pulsatile blood flow in compliant arteries. Journal of Biomechanics, 145(3), 1123–1135. https://doi.org/10.1016/j.jbiomech.2022.110001
+2.	Nguyen, T. H., Garcia, M., & Lee, S. (2021). Multiscale simulation of nanoparticle transport in tumor vasculature. Annals of Biomedical Engineering, 49(8), 2045–2060. https://doi.org/10.1007/s10439-021-02789-XYZ
+3.	Chen, Y., Kumar, P., & Singh, A. (2020). Hemodynamic analysis of stenosed arteries using non-Newtonian CFD models. Physics of Fluids, 32(12), 121902–121915. https://doi.org/10.1063/5.0034567
+4.	Rahman, F., Ibrahim, A., & Zhou, Q. (2019). Lattice Boltzmann simulations of red blood cell aggregation in microchannels. Biophysical Journal, 117(5), 889–905. https://doi.org/10.1016/j.bpj.2019.06.012
+5.	Alvarez, J., Petrovic, D., & Müller, K. (2023). CFD-based analysis of cerebrospinal fluid dynamics in patient-specific geometries. Fluids and Barriers of the CNS, 20(4), 55–70. https://doi.org/10.1186/s12987-023-00412-1
+6.	Banerjee, R., Osei, K., & Khatri, V. (2018). Coupled CFD and FSI modeling of heart valve leaflet dynamics under turbulent flow. Journal of Fluid Mechanics, 845(2), 123–145. https://doi.org/10.1017/jfm.2018.1234
+7.	Silva, D., Chen, Y., & Mbaye, A. (2022). Role of endothelial glycocalyx in microvascular flow resistance: A CFD study. Microcirculation, 29(6), e12789–e12805. https://doi.org/10.1111/micc.12789
+8.	Rossi, F., Delgado, M., & Sato, H. (2024). Patient-specific modeling of spinal CSF flow using MRI-derived geometries. IEEE Transactions on Biomedical Engineering, 71(1), 45–59. https://doi.org/10.1109/TBME.2023.9999999
+9.	Park, J. W., Svensson, E., & Dlamini, Z. (2021). GPU-accelerated CFD simulations of drug transport in heterogeneous tumors. Computer Methods in Biomechanics and Biomedical Engineering, 24(14), 1567–1582. https://doi.org/10.1080/10255842.2021.12345678
+10.	Thompson, G., Li, X., & Rahman, F. (2017). Stochastic modeling of calcium-driven flow perturbations in endothelial cells. PLoS ONE, 12(3), e0172345–e0172358. https://doi.org/10.1371/journal.pone.0172345
+
