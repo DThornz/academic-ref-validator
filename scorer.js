@@ -8,13 +8,16 @@ export function scoreReference(features, results, options = {}) {
   const reasons = [];
 
   if (results.doiVerified) {
-    score += SCORE.DOI_VERIFIED;
-    reasons.push({ kind: 'positive', text: results.doiViaRedirect
-      ? 'DOI resolves via publisher redirect (not in CrossRef)'
-      : 'DOI verified in CrossRef' });
-    if (!results.doiViaRedirect && results.doiTitleMismatch) {
-      score -= 45;
-      reasons.push({ kind: 'negative', text: 'DOI resolves to a different paper — title does not match CrossRef record' });
+    if (results.doiViaRedirect) {
+      score += SCORE.DOI_REDIRECT;
+      reasons.push({ kind: 'positive', text: 'DOI resolves via publisher redirect (not in CrossRef — title unverifiable)' });
+    } else {
+      score += SCORE.DOI_VERIFIED;
+      reasons.push({ kind: 'positive', text: 'DOI verified in CrossRef' });
+      if (results.doiTitleMismatch) {
+        score -= 45;
+        reasons.push({ kind: 'negative', text: 'DOI resolves to a different paper — title does not match CrossRef record' });
+      }
     }
   } else if (features.doi) {
     reasons.push({ kind: 'negative', text: `DOI ${features.doi} not found in CrossRef or via redirect` });

@@ -14,6 +14,7 @@ export const API = {
 
 export const SCORE = {
   DOI_VERIFIED:            75,
+  DOI_REDIRECT:            60,
   ISBN_VERIFIED:           70,
   CROSSREF_TEXT_MATCH:     75,
   EUROPE_PMC_MATCH:        45,
