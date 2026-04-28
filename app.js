@@ -25,6 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
   exportBtn.addEventListener('click',    () => exportCSV(lastResults));
   exportPdfBtn.addEventListener('click', () => exportPDF(lastResults, lastDetectedStyle));
 
+  document.querySelectorAll('.example-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(btn.dataset.src);
+        if (!res.ok) throw new Error();
+        inputText.value = await res.text();
+        clearStatus();
+      } catch {
+        setStatus('Could not load example file.');
+      }
+    });
+  });
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') clearBtn.click();
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !analyzeBtn.disabled) analyzeBtn.click();
