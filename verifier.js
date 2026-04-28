@@ -26,15 +26,40 @@ export async function verifyDOI(doi, signal) {
     }
   } catch { /* fall through */ }
 
-  // Fallback: follow the DOI redirect. doi.org resolves DOIs that CrossRef's
-  // record may be incomplete for. redirect:'manual' gives us the 302 without
-  // chasing the publisher URL, avoiding CORS issues with the destination.
+  // Secondary: doi.org content negotiation — CORS-friendly, covers DOIs that
+  // CrossRef's API misses (e.g. old conference papers, non-CrossRef publishers).
+  // Returns CSL-JSON with title/author data so we can still cross-check the title.
+  try {
+    const res = await fetch(`https://doi.org/${doi}`, {
+      headers: { Accept: 'application/vnd.citationstyles.csl+json' },
+      signal: timedSignal(signal, 8000)
+    });
+    if (res.ok) {
+      const csl = await res.json();
+      if (csl?.title) return { ok: true, data: normaliseCsl(csl) };
+    }
+  } catch { /* fall through */ }
+
+  // Last resort: follow the redirect without metadata — title cannot be verified.
   try {
     const res = await fetch(`https://doi.org/${doi}`, { redirect: 'manual', signal: timedSignal(signal, 6000) });
     if (res.type === 'opaqueredirect') return { ok: true, viaRedirect: true };
   } catch { /* network error or CORS block */ }
 
   return { ok: false };
+}
+
+function normaliseCsl(csl) {
+  return {
+    title:             csl.title ? [csl.title] : [],
+    author:            csl.author || [],
+    published:         csl.issued ?? null,
+    'container-title': csl['container-title'] ? [csl['container-title']] : [],
+    volume:            csl.volume  ?? null,
+    issue:             csl.issue   ?? null,
+    page:              csl.page    ?? null,
+    DOI:               csl.DOI     ?? null,
+  };
 }
 
 export async function searchCrossRefText(query, signal) {
