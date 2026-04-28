@@ -3,70 +3,725 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reference Validator</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Reference Validator · A.Mirza</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    /* ── SITE TOKENS ───────────────────────────────────────────── */
+    :root {
+      --bg:        #f5f6f8;
+      --bg2:       #ffffff;
+      --bg3:       #eef0f4;
+      --border:    #d0d6e0;
+      --border2:   #c5cad8;
+      --teal:      #0b7a6e;
+      --teal-glow: rgba(11,122,110,.08);
+      --teal-lt:   #e8f4f2;
+      --amber:     #b45309;
+      --text:      #1a202c;
+      --muted:     #4a5568;
+      --dim:       #718096;
+      --valid:     #15803d;
+      --warning-c: #b45309;
+      --invalid:   #dc2626;
+      --mono:      'DM Mono', monospace;
+      --serif:     'DM Serif Display', Georgia, serif;
+      --sans:      'DM Sans', system-ui, sans-serif;
+      --sh:        0 2px 8px rgba(0,0,0,.06);
+      --sh-lg:     0 8px 32px rgba(0,0,0,.10);
+    }
+
+    body.dark-mode {
+      --bg:        #0f172a;
+      --bg2:       #1e293b;
+      --bg3:       #253349;
+      --border:    #2a3f5a;
+      --border2:   #334155;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --dim:       #64748b;
+      --teal-glow: rgba(45,212,191,.06);
+      --teal-lt:   #0d2d29;
+    }
+
+    /* ── RESET & BASE ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0; padding: 0;
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.dark-mode { background: #060e1c !important; color: #e2e8f0 !important; }
+    body.size-sm   { font-size: 13px !important; }
+    body.size-lg   { font-size: 17px !important; }
+    body.font-serif { font-family: var(--serif) !important; }
+    body.font-mono  { font-family: var(--mono)  !important; }
+
+    a { color: inherit; }
+
+    /* ── NAVIGATION ────────────────────────────────────────────── */
+    .site-nav {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(245,246,248,.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 24px; height: 44px;
+    }
+
+    body.dark-mode .site-nav { background: rgba(6,14,28,.92); }
+
+    .site-nav-logo {
+      font-family: var(--mono); font-size: .8em;
+      color: var(--teal); font-weight: 500; letter-spacing: .04em;
+      margin-right: auto; white-space: nowrap; text-decoration: none;
+    }
+    .site-nav-logo span { color: var(--dim); }
+
+    .site-nav-link {
+      padding: 5px 12px; border-radius: 6px; font-size: .77em;
+      color: var(--muted); text-decoration: none;
+      transition: all .18s; border: 1px solid transparent;
+      font-family: var(--sans); white-space: nowrap;
+    }
+    .site-nav-link:hover {
+      color: var(--teal); background: var(--teal-glow);
+      border-color: rgba(11,122,110,.15);
+    }
+    .site-nav-link.curr {
+      color: var(--teal); background: var(--teal-glow);
+      border-color: rgba(11,122,110,.2); font-weight: 600;
+    }
+
+    .nav-dropdown { position: relative; }
+
+    .nav-dropdown-menu {
+      position: absolute; top: 100%; left: 50%;
+      background: rgba(255,255,255,.97);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.1);
+      min-width: 200px; padding: 6px; padding-top: 12px; margin-top: -6px;
+      opacity: 0; pointer-events: none;
+      transform: translateX(-50%) translateY(-4px);
+      transition: opacity .15s, transform .15s; z-index: 9999;
+    }
+    body.dark-mode .nav-dropdown-menu { background: rgba(30,41,59,.97); }
+
+    .nav-dropdown:hover .nav-dropdown-menu,
+    .nav-dropdown-menu:hover {
+      opacity: 1; pointer-events: all;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .nav-dropdown-item {
+      display: block; padding: 7px 14px; border-radius: 6px;
+      font-size: .77em; color: var(--muted); text-decoration: none;
+      white-space: nowrap; transition: all .15s;
+    }
+    .nav-dropdown-item:hover { color: var(--teal); background: var(--teal-glow); }
+    .nav-dropdown-item.active {
+      color: var(--teal); background: var(--teal-glow); font-weight: 600;
+    }
+
+    /* ── PAGE WRAPPER ──────────────────────────────────────────── */
+    .page-wrap {
+      max-width: 880px; margin: 0 auto;
+      padding: 0 24px 80px; flex: 1;
+    }
+
+    /* ── HERO ──────────────────────────────────────────────────── */
+    .hero {
+      padding: 52px 0 36px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 36px; text-align: center;
+    }
+
+    .hero-kicker {
+      font-family: var(--mono); font-size: .7em; color: var(--teal);
+      letter-spacing: .16em; text-transform: uppercase; margin-bottom: 12px;
+    }
+
+    .hero-title {
+      font-family: var(--serif);
+      font-size: clamp(2em, 4.5vw, 3em);
+      font-weight: 400; line-height: 1.1;
+      margin: 0 0 14px; color: var(--text);
+    }
+
+    .hero-sub {
+      font-size: .95em; color: var(--muted); max-width: 600px;
+      line-height: 1.65; margin: 0 auto 22px;
+    }
+
+    .hero-pills {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .pill {
+      padding: 3px 11px; border-radius: 99px;
+      font-size: .7em; font-family: var(--mono);
+      background: var(--teal-lt); color: var(--teal);
+      border: 1px solid rgba(11,122,110,.2);
+    }
+
+    /* ── TOOL CARD ─────────────────────────────────────────────── */
+    .tool-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+      margin-bottom: 16px; box-shadow: var(--sh);
+    }
+
+    /* ── EXAMPLE ROW ───────────────────────────────────────────── */
+    .example-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; flex-wrap: wrap;
+    }
+
+    .example-label {
+      font-family: var(--mono); font-size: .7em; color: var(--dim);
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+
+    .example-btn {
+      font-size: .72em; font-family: var(--mono);
+      padding: 3px 11px; border-radius: 99px;
+      border: 1px solid; cursor: pointer;
+      transition: background .15s ease;
+    }
+
+    .example-btn.fake  { background: #fff0f0; color: #c62828; border-color: #f5c6c6; }
+    .example-btn.fake:hover { background: #fde0e0; }
+    .example-btn.real  { background: var(--teal-lt); color: var(--teal); border-color: rgba(11,122,110,.25); }
+    .example-btn.real:hover { background: #d6ece9; }
+
+    body.dark-mode .example-btn.fake { background: #2d1a1a; border-color: #6e2c2c; color: #f85149; }
+    body.dark-mode .example-btn.fake:hover { background: #3d2020; }
+    body.dark-mode .example-btn.real { background: #0d2d29; border-color: #1a4a2e; color: #34d399; }
+    body.dark-mode .example-btn.real:hover { background: #122e29; }
+
+    /* ── TEXTAREA ──────────────────────────────────────────────── */
+    #inputText {
+      width: 100%; min-height: 200px; resize: vertical;
+      padding: 12px; font-family: var(--mono); font-size: 13px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); line-height: 1.6;
+    }
+
+    #inputText:focus {
+      outline: 2px solid var(--teal); outline-offset: 0;
+      border-color: var(--teal);
+    }
+
+    /* ── BUTTONS ───────────────────────────────────────────────── */
+    .controls {
+      margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+
+    button {
+      font-family: var(--sans); font-size: .88em;
+      padding: 8px 18px; border-radius: 8px;
+      border: 1px solid transparent; cursor: pointer;
+      transition: all .15s ease; font-weight: 500;
+    }
+
+    button.primary { background: var(--teal); color: white; }
+    button.primary:hover:not(:disabled) { background: #096057; }
+    button.primary:disabled { background: rgba(11,122,110,.35); cursor: not-allowed; }
+
+    button.secondary { background: var(--bg2); color: var(--muted); border-color: var(--border); }
+    button.secondary:hover:not(:disabled) {
+      color: var(--teal); border-color: rgba(11,122,110,.3); background: var(--teal-glow);
+    }
+    button.secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .kbd-hint {
+      font-family: var(--mono); font-size: .7em;
+      color: var(--dim); margin: 8px 0 0;
+    }
+
+    /* ── OPTIONS ───────────────────────────────────────────────── */
+    .options-panel {
+      background: var(--bg3); padding: 12px 16px;
+      border: 1px solid var(--border); border-radius: 10px;
+      display: flex; flex-direction: column; gap: 8px; margin-top: 14px;
+    }
+
+    .option {
+      font-size: .82em; color: var(--muted);
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+    }
+    .option input[type="checkbox"] { accent-color: var(--teal); margin: 0; }
+
+    /* ── PROGRESS ──────────────────────────────────────────────── */
+    .progress-bar {
+      height: 3px; background: var(--border);
+      border-radius: 2px; overflow: hidden; margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%; width: 0%; background: var(--teal);
+      border-radius: 2px; transition: width 0.2s ease;
+    }
+
+    /* ── STATUS ────────────────────────────────────────────────── */
+    .status {
+      min-height: 20px; font-size: .82em; font-family: var(--mono);
+      color: var(--dim); display: flex; align-items: center;
+      gap: 8px; margin-bottom: 16px;
+    }
+    .status.active::before {
+      content: ""; display: inline-block; width: 12px; height: 12px;
+      border: 2px solid var(--teal); border-top-color: transparent;
+      border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESULTS ───────────────────────────────────────────────── */
+    .results-container { display: flex; flex-direction: column; }
+
+    .summary-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 20px 18px;
+      margin-bottom: 16px; box-shadow: var(--sh);
+    }
+
+    .summary-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+
+    .summary-title {
+      font-size: .82em; font-family: var(--mono); color: var(--muted);
+    }
+
+    .style-badge {
+      font-size: .68em; font-weight: 600; font-family: var(--mono);
+      letter-spacing: .08em; padding: 2px 9px; border-radius: 999px;
+      background: var(--teal-lt); color: var(--teal);
+      border: 1px solid rgba(11,122,110,.2);
+    }
+    .style-badge.unknown {
+      background: var(--bg3); color: var(--dim); border-color: var(--border);
+    }
+
+    .summary-bar {
+      display: flex; height: 8px; border-radius: 4px;
+      overflow: hidden; gap: 2px;
+    }
+    .bar-segment { height: 100%; }
+    .bar-segment.valid   { background: var(--valid); }
+    .bar-segment.warning { background: var(--warning-c); }
+
+    .summary-labels { display: flex; gap: 28px; margin-top: 12px; }
+    .summary-label  { display: flex; flex-direction: column; }
+
+    .label-count {
+      font-size: 1.8em; font-weight: 700;
+      font-family: var(--serif); line-height: 1;
+    }
+    .label-name {
+      font-size: .68em; font-family: var(--mono); color: var(--dim);
+      text-transform: uppercase; letter-spacing: .06em; margin-top: 3px;
+    }
+    .summary-label.valid   .label-count { color: var(--valid); }
+    .summary-label.warning .label-count { color: var(--warning-c); }
+
+    /* ── RESULT COLUMNS ────────────────────────────────────────── */
+    .results-columns {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; align-items: start;
+    }
+
+    .results-column { min-width: 0; }
+
+    .column-header {
+      font-family: var(--mono); font-size: .72em; font-weight: 600;
+      padding: 8px 14px; border-radius: 8px 8px 0 0;
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+    .column-header.valid {
+      background: #e8f5e9; color: var(--valid);
+      border: 1px solid #c8e6c9; border-bottom: none;
+    }
+    .column-header.warning {
+      background: #fff8e1; color: var(--amber);
+      border: 1px solid #ffe082; border-bottom: none;
+    }
+    body.dark-mode .column-header.valid   { background: #0f2419; border-color: #1a4a2e; }
+    body.dark-mode .column-header.warning { background: #2d1f00; border-color: #5a3e00; }
+
+    .column-cards {
+      max-height: 68vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 8px; border: 1px solid var(--border);
+      border-radius: 0 0 8px 8px; background: var(--bg3);
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .column-cards::-webkit-scrollbar { width: 4px; }
+    .column-cards::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .column-empty {
+      font-size: .8em; font-family: var(--mono);
+      color: var(--dim); padding: 12px 4px; margin: 0;
+    }
+
+    /* ── RESULT CARDS ──────────────────────────────────────────── */
+    .result-card {
+      background: var(--bg2); border-left: 5px solid #888;
+      padding: 14px 16px; border-radius: 0 8px 8px 0;
+      box-shadow: var(--sh);
+    }
+    .result-card.valid   { border-left-color: var(--valid); }
+    .result-card.warning { border-left-color: var(--warning-c); }
+
+    .result-header {
+      display: flex; justify-content: space-between;
+      align-items: baseline; gap: 10px; margin-bottom: 6px;
+    }
+
+    .ref-num {
+      font-family: var(--mono); font-size: .72em;
+      font-weight: 600; color: var(--dim); flex-shrink: 0;
+    }
+
+    .label-badge {
+      font-family: var(--mono); font-size: .65em;
+      text-transform: uppercase; letter-spacing: .08em;
+      padding: 2px 8px; border-radius: 999px;
+      font-weight: 600; color: white; background: #888;
+    }
+    .result-card.valid   .label-badge { background: var(--valid); }
+    .result-card.warning .label-badge { background: var(--warning-c); }
+
+    .reference-text {
+      font-family: var(--mono); font-size: .76em;
+      background: var(--bg3); padding: 8px 10px;
+      border-radius: 6px; margin: 8px 0;
+      white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+    }
+
+    .reasons-list { list-style: none; padding: 0; margin: 0; }
+    .reasons-list li {
+      padding: 2px 0; font-size: .8em; color: var(--muted);
+      display: flex; gap: 6px; align-items: baseline;
+    }
+    .reasons-list li::before  { content: "·"; color: var(--dim); flex-shrink: 0; }
+    .reasons-list li.positive::before { content: "✓"; color: var(--valid); }
+    .reasons-list li.negative::before { content: "✗"; color: var(--invalid); }
+    .reasons-list li.neutral::before  { content: "·"; color: var(--dim); }
+
+    .match-link {
+      display: inline-block; margin-top: 8px;
+      font-size: .75em; font-family: var(--mono);
+      color: var(--teal); text-decoration: none;
+    }
+    .match-link:hover { text-decoration: underline; }
+
+    /* Matched-record dropdown */
+    .matched-record { margin-top: 8px; }
+    .matched-record > summary {
+      font-family: var(--mono); font-size: .72em; color: var(--teal);
+      cursor: pointer; user-select: none; list-style: none;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .matched-record > summary::before {
+      content: "▶"; font-size: 8px; transition: transform .15s ease;
+    }
+    .matched-record[open] > summary::before { transform: rotate(90deg); }
+    .matched-record > summary::-webkit-details-marker { display: none; }
+    .matched-record > summary:hover { text-decoration: underline; }
+
+    .matched-citation {
+      margin-top: 6px; background: var(--bg3);
+      border-radius: 6px; padding: 8px 10px;
+      font-size: .75em; color: var(--muted);
+    }
+    .matched-source {
+      display: block; font-family: var(--mono); font-size: .85em;
+      font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--teal); margin-bottom: 4px;
+    }
+    .matched-cite-text {
+      margin: 0; line-height: 1.55;
+      word-break: break-word; color: var(--text);
+    }
+
+    /* Override button */
+    .override-btn {
+      display: inline-block; margin-top: 10px;
+      font-family: var(--mono); font-size: .68em;
+      padding: 3px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--dim); cursor: pointer; transition: all .15s ease;
+    }
+    .override-btn:hover {
+      color: var(--teal); border-color: rgba(11,122,110,.3);
+      background: var(--teal-glow);
+    }
+
+    /* ── FOOTER ────────────────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 20px 24px;
+      font-family: var(--mono); font-size: .7em; color: var(--dim);
+      border-top: 1px solid var(--border); margin-top: auto;
+    }
+    footer a { color: var(--dim); text-decoration: none; }
+    footer a:hover { color: var(--teal); }
+
+    /* ── ACCESSIBILITY PANEL ───────────────────────────────────── */
+    .acc-btn {
+      position: fixed; bottom: 22px; right: 22px; z-index: 9100;
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--teal); color: #fff; border: none;
+      cursor: pointer; font-size: 1em; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,.22); transition: transform .2s;
+    }
+    .acc-btn:hover { transform: scale(1.1); }
+
+    .acc-panel {
+      position: fixed; bottom: 70px; right: 22px; z-index: 9100;
+      width: 220px; padding: 16px 18px 12px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg2); box-shadow: var(--sh-lg);
+      opacity: 0; transform: translateY(8px) scale(.97);
+      pointer-events: none; transition: all .2s cubic-bezier(.4,0,.2,1);
+    }
+    .acc-panel.open { opacity: 1; transform: none; pointer-events: all; }
+
+    .acc-panel-title {
+      font-family: var(--mono); font-size: .75em;
+      font-weight: 600; margin-bottom: 13px; color: var(--text);
+    }
+    .acc-row { margin-bottom: 12px; }
+    .acc-row-label {
+      font-family: var(--mono); font-size: .62em;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); margin-bottom: 6px;
+    }
+    .acc-toggle-row { display: flex; align-items: center; gap: 8px; }
+    .acc-toggle-label { font-size: .78em; color: var(--muted); }
+    .acc-btn-group { display: flex; gap: 4px; }
+
+    .acc-switch { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+    .acc-switch input { opacity: 0; width: 0; height: 0; }
+    .acc-slider {
+      position: absolute; inset: 0; background: var(--border);
+      border-radius: 99px; cursor: pointer; transition: background .18s;
+    }
+    .acc-slider::before {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      border-radius: 50%; left: 3px; top: 3px;
+      background: #fff; transition: transform .18s;
+    }
+    .acc-switch input:checked + .acc-slider { background: var(--teal); }
+    .acc-switch input:checked + .acc-slider::before { transform: translateX(18px); }
+
+    .acc-opt {
+      flex: 1; padding: 4px; border: 1px solid var(--border);
+      border-radius: 5px; background: var(--bg3); color: var(--dim);
+      font-size: .72em; cursor: pointer; text-align: center;
+      transition: all .15s; font-family: var(--mono); line-height: 1.4;
+    }
+    .acc-opt:hover { color: var(--teal); border-color: rgba(11,122,110,.3); background: var(--teal-glow); }
+    .acc-opt.active { color: var(--teal); border-color: rgba(11,122,110,.3); background: var(--teal-glow); font-weight: 600; }
+
+    /* ── RESPONSIVE ────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .site-nav { padding: 0 14px; }
+      .page-wrap { padding: 0 14px 60px; }
+      .hero { padding: 36px 0 28px; }
+      .hero-title { font-size: 2em; }
+      .hero-pills { display: none; }
+      .controls { flex-direction: column; }
+      button { width: 100%; }
+      .results-columns { grid-template-columns: 1fr; }
+      .column-cards { max-height: 50vh; }
+    }
+  </style>
 </head>
 <body>
-  <div id="app">
 
-    <header>
-      <h1>Reference Validator</h1>
-      <p class="subtitle">Verify citations against CrossRef, Europe PMC, Semantic Scholar, arXiv, and more</p>
-    </header>
+  <!-- ── NAVIGATION ──────────────────────────────────────────── -->
+  <nav class="site-nav">
+    <a class="site-nav-logo" href="https://dthornz.github.io/website-cv-tools/">A.Mirza <span>/</span> site</a>
+    <a class="site-nav-link" href="https://dthornz.github.io/website-cv-tools/">Home</a>
+    <a class="site-nav-link" href="https://dthornz.github.io/website-cv-tools/AsadMirza_CV.html">CV</a>
+    <div class="nav-dropdown">
+      <a class="site-nav-link curr" href="#">Projects ▾</a>
+      <div class="nav-dropdown-menu">
+        <a class="nav-dropdown-item" href="https://dthornz.github.io/website-cv-tools/hodgkin-huxley.html">🧠 HH Neuron Model</a>
+        <a class="nav-dropdown-item" href="https://dthornz.github.io/website-cv-tools/maxwell-boltzmann.html">⚛ MB Gas Simulator</a>
+        <a class="nav-dropdown-item" href="https://dthornz.github.io/website-cv-tools/LBM-cfd.html">🌊 LBM CFD Simulator</a>
+        <a class="nav-dropdown-item" href="https://dthornz.github.io/website-cv-tools/fea-cfd-calc.html">⚙ FEA / CFD Calc</a>
+        <a class="nav-dropdown-item" href="https://dthornz.github.io/website-cv-tools/dissertation.html">📋 PhD Dissertation</a>
+        <a class="nav-dropdown-item active" href="#">📑 Reference Validator</a>
+      </div>
+    </div>
+  </nav>
 
-    <main>
-      <section class="input-panel">
-        <textarea
-          id="inputText"
-          placeholder="Paste your bibliography or reference list here..."
-          aria-label="Reference input"
-        ></textarea>
+  <!-- ── PAGE WRAP ───────────────────────────────────────────── -->
+  <div class="page-wrap">
 
-        <div class="example-row">
-          <span class="example-label">Try an example:</span>
-          <button class="example-btn fake" data-src="examples/All_Fake.txt">All Fake</button>
-          <button class="example-btn fake" data-src="examples/All_Fake_BME.txt">Fake BME</button>
-          <button class="example-btn real" data-src="examples/All_Real_BME.txt">Real BME</button>
-        </div>
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-kicker">Academic Tools</div>
+      <h1 class="hero-title">Reference Validator</h1>
+      <p class="hero-sub">Verify citations against CrossRef, Europe PMC, Semantic Scholar, arXiv, and more. Each reference is scored from multiple independent evidence sources — pure client-side, no server, no API keys.</p>
+      <div class="hero-pills">
+        <span class="pill">CrossRef</span>
+        <span class="pill">Europe PMC</span>
+        <span class="pill">Semantic Scholar</span>
+        <span class="pill">arXiv</span>
+        <span class="pill">Google Books</span>
+        <span class="pill">Open Library</span>
+      </div>
+    </div>
 
-        <div class="controls">
-          <button id="analyzeBtn" class="primary">Analyze References</button>
-          <button id="cancelBtn" class="secondary" hidden>Cancel</button>
-          <button id="clearBtn" class="secondary">Clear</button>
-          <button id="exportBtn" class="secondary" disabled>Export CSV</button>
-          <button id="exportPdfBtn" class="secondary" disabled>Export PDF</button>
-        </div>
-        <p class="kbd-hint">Ctrl+Enter to analyze &nbsp;·&nbsp; Esc to clear</p>
-        <div id="progressBar" class="progress-bar" hidden>
-          <div id="progressFill" class="progress-fill"></div>
-        </div>
-      </section>
+    <!-- Tool card -->
+    <div class="tool-card">
 
-      <section class="options-panel">
+      <div class="example-row">
+        <span class="example-label">Try an example</span>
+        <button class="example-btn fake" data-src="examples/All_Fake.txt">All Fake</button>
+        <button class="example-btn fake" data-src="examples/All_Fake_BME.txt">Fake BME</button>
+        <button class="example-btn real" data-src="examples/All_Real_BME.txt">Real BME</button>
+      </div>
+
+      <textarea
+        id="inputText"
+        placeholder="Paste your bibliography or reference list here..."
+        aria-label="Reference input"
+      ></textarea>
+
+      <div class="controls">
+        <button id="analyzeBtn" class="primary">Analyze References</button>
+        <button id="cancelBtn" class="secondary" hidden>Cancel</button>
+        <button id="clearBtn" class="secondary">Clear</button>
+        <button id="exportBtn" class="secondary" disabled>Export CSV</button>
+        <button id="exportPdfBtn" class="secondary" disabled>Export PDF</button>
+      </div>
+      <p class="kbd-hint">Ctrl+Enter to analyze &nbsp;·&nbsp; Esc to clear</p>
+
+      <div id="progressBar" class="progress-bar" hidden>
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+
+      <div class="options-panel">
         <label class="option">
           <input type="checkbox" id="useBooks" checked>
           Search Google Books &amp; Open Library for book-like citations (fallback)
         </label>
         <label class="option">
           <input type="checkbox" id="strictMode">
-          Strict matching (require exact title match)
+          Strict matching — require exact title match
         </label>
         <label class="option">
           <input type="checkbox" id="fuzzyMode">
-          Fuzzy title matching — tolerates OCR errors, diacritics, and minor typos (slower)
+          Fuzzy matching — tolerate OCR errors, diacritics, and minor typos (slower)
         </label>
-      </section>
+      </div>
+    </div>
 
-      <div id="status" class="status" aria-live="polite"></div>
+    <div id="status" class="status" aria-live="polite"></div>
 
-      <section id="results" class="results-container"></section>
-    </main>
+    <section id="results" class="results-container"></section>
 
-    <footer>
-      <p>All checks are probabilistic. Results should be interpreted with care.</p>
-    </footer>
+  </div><!-- /page-wrap -->
+
+  <!-- ── FOOTER ──────────────────────────────────────────────── -->
+  <footer>
+    © 2026 Asad Mirza, Ph.D. · Research Assistant Professor · FIU Biomedical Engineering ·
+    <a href="https://github.com/DThornz/academic-ref-validator" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <!-- ── ACCESSIBILITY PANEL ────────────────────────────────── -->
+  <button class="acc-btn" id="acc-btn" onclick="accToggle()" title="Display Settings">⚙</button>
+  <div class="acc-panel" id="acc-panel">
+    <div class="acc-panel-title">⚙ Display Settings</div>
+    <div class="acc-row">
+      <div class="acc-row-label">Color Mode</div>
+      <div class="acc-toggle-row">
+        <span class="acc-toggle-label">Dark Mode</span>
+        <label class="acc-switch">
+          <input type="checkbox" id="acc-dark" onchange="accDark(this)">
+          <span class="acc-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="acc-row">
+      <div class="acc-row-label">Font Size</div>
+      <div class="acc-btn-group">
+        <button class="acc-opt" id="acc-sm" onclick="accSize('sm')">Small</button>
+        <button class="acc-opt active" id="acc-md" onclick="accSize('md')">Medium</button>
+        <button class="acc-opt" id="acc-lg" onclick="accSize('lg')">Large</button>
+      </div>
+    </div>
+    <div class="acc-row">
+      <div class="acc-row-label">Font Style</div>
+      <div class="acc-btn-group">
+        <button class="acc-opt active" id="acc-f0" onclick="accFont(0)">Default</button>
+        <button class="acc-opt"        id="acc-f1" onclick="accFont(1)">Serif</button>
+        <button class="acc-opt"        id="acc-f2" onclick="accFont(2)">Mono</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
+  <script>
+    /* ── Accessibility panel ─────────────────────────────────── */
+    function accToggle() {
+      document.getElementById('acc-panel').classList.toggle('open');
+    }
+
+    document.addEventListener('click', function(e) {
+      var panel = document.getElementById('acc-panel');
+      var btn   = document.getElementById('acc-btn');
+      if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
+        panel.classList.remove('open');
+      }
+    });
+
+    function applyPrefs() {
+      var stored = localStorage.getItem('acc_dark');
+      var dark = stored !== null
+        ? stored === '1'
+        : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var sz = localStorage.getItem('acc_sz') || 'md';
+      var fi = parseInt(localStorage.getItem('acc_fi') || '0', 10);
+      var b  = document.body;
+
+      b.classList.toggle('dark-mode', dark);
+      b.classList.remove('size-sm', 'size-md', 'size-lg');
+      b.classList.add('size-' + sz);
+      b.classList.remove('font-serif', 'font-mono');
+      if (fi === 1) b.classList.add('font-serif');
+      if (fi === 2) b.classList.add('font-mono');
+
+      var dc = document.getElementById('acc-dark');
+      if (dc) dc.checked = dark;
+      ['sm','md','lg'].forEach(function(s) {
+        var el = document.getElementById('acc-' + s);
+        if (el) el.classList.toggle('active', s === sz);
+      });
+      [0,1,2].forEach(function(i) {
+        var el = document.getElementById('acc-f' + i);
+        if (el) el.classList.toggle('active', i === fi);
+      });
+    }
+
+    function accDark(cb) { localStorage.setItem('acc_dark', cb.checked ? '1' : '0'); applyPrefs(); }
+    function accSize(s)  { localStorage.setItem('acc_sz', s); applyPrefs(); }
+    function accFont(i)  { localStorage.setItem('acc_fi', i); applyPrefs(); }
+
+    applyPrefs();
+  </script>
 </body>
 </html>
