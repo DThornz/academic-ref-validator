@@ -284,7 +284,7 @@ function checkAuthorMatch(refText, crMatch, epmcMatch, ssMatch) {
 
   if (crMatch?.author) {
     for (const a of crMatch.author) {
-      if (a.family && a.family.length >= 4) lastNames.add(a.family.toLowerCase());
+      if (a.family && a.family.length >= 2) lastNames.add(a.family.toLowerCase());
     }
   }
   if (epmcMatch?.authorString) {
