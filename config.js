@@ -27,3 +27,6 @@ export const SCORE = {
 };
 
 export const CONCURRENCY_LIMIT = 5;
+
+export const VERSION = 'v1.4.0';
+export const GITHUB_REPO = 'DThornz/academic-ref-validator';

@@ -2,7 +2,23 @@ import { splitReferences, extractFeatures, buildQuery, buildCrossRefQuery, extra
 import { verifyDOI, verifyISBN, searchCrossRefText, searchEuropePMC, searchSemanticScholar, searchArXiv, searchBooks, searchOpenLibrary } from './verifier.js';
 import { scoreReference } from './scorer.js';
 import { initResults, addResult, finalizeResults, setStatus, clearStatus, exportCSV, exportPDF } from './ui.js';
-import { CONCURRENCY_LIMIT } from './config.js';
+import { CONCURRENCY_LIMIT, VERSION, GITHUB_REPO } from './config.js';
+
+// ── Version display ───────────────────────────────────────────────
+(function initVersionBadge() {
+  const badge = document.getElementById('app-version');
+  const updated = document.getElementById('app-updated');
+  if (badge) badge.textContent = VERSION;
+  fetch(`https://api.github.com/repos/${GITHUB_REPO}/commits/main`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data?.commit?.committer?.date) return;
+      const d = new Date(data.commit.committer.date);
+      const fmt = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      if (updated) updated.textContent = `· Updated ${fmt}`;
+    })
+    .catch(() => {});
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   const analyzeBtn   = document.getElementById('analyzeBtn');
