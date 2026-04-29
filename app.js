@@ -281,10 +281,14 @@ function isCrossRefMatch(refText, features, crHit, fuzzy = false) {
 
 function checkAuthorMatch(refText, crMatch, epmcMatch, ssMatch) {
   const lastNames = new Set();
+  const shortNames = new Set(); // CrossRef names < 4 chars — restrict to author zone
 
   if (crMatch?.author) {
     for (const a of crMatch.author) {
-      if (a.family && a.family.length >= 2) lastNames.add(a.family.toLowerCase());
+      if (!a.family) continue;
+      const name = a.family.toLowerCase();
+      if (name.length >= 4) lastNames.add(name);
+      else if (name.length >= 2) shortNames.add(name);
     }
   }
   if (epmcMatch?.authorString) {
@@ -303,16 +307,22 @@ function checkAuthorMatch(refText, crMatch, epmcMatch, ssMatch) {
     }
   }
 
-  if (lastNames.size === 0) return null;
+  if (lastNames.size === 0 && shortNames.size === 0) return null;
 
   const refLower = refText.toLowerCase();
-  return [...lastNames].some(name => {
-    const idx = refLower.indexOf(name);
+  // Author zone: first 60 chars covers "[123] Li, J." style numbering + first author
+  const authorZone = refLower.slice(0, 60);
+
+  const hitAt = (name, text) => {
+    const idx = text.indexOf(name);
     if (idx === -1) return false;
-    const before = idx === 0 ? ' ' : refLower[idx - 1];
-    const after  = refLower[idx + name.length] ?? ' ';
+    const before = idx === 0 ? ' ' : text[idx - 1];
+    const after  = text[idx + name.length] ?? ' ';
     return /[^a-z]/.test(before) && /[^a-z]/.test(after);
-  });
+  };
+
+  return [...lastNames].some(n => hitAt(n, refLower)) ||
+         [...shortNames].some(n => hitAt(n, authorZone));
 }
 
 function computeVolumePageConfirmed(features, crHit) {
